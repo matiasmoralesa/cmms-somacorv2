@@ -57,13 +57,13 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // El estado del usuario se inicializa con el usuario simulado.
     const [user, setUser] = useState<User | null>(mockUser);
-    const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
+    const [token, setToken] = useState<string | null>(localStorage.getItem('authToken'));
     // isLoading se establece en 'false' para evitar la pantalla de carga.
     const [isLoading, setIsLoading] = useState(false);
 
     // useEffect se mantiene para manejar la restauración de una sesión real si existiera.
     useEffect(() => {
-        const storedToken = localStorage.getItem('token');
+        const storedToken = localStorage.getItem('authToken');
         const storedUser = localStorage.getItem('user');
 
         if (storedToken && storedUser) {
@@ -86,7 +86,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const login = async (username: string, password: string) => {
         const response = await apiClient.post<{ token: string; user: User }>('/login/', { username, password });
         const { token: newToken, user: newUser } = response.data;
-        localStorage.setItem('token', newToken);
+        localStorage.setItem('authToken', newToken);
         localStorage.setItem('user', JSON.stringify(newUser));
         setToken(newToken);
         setUser(newUser);
@@ -96,7 +96,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Al cerrar sesión, se vuelve al usuario simulado.
     const logout = () => {
         apiClient.post('/logout/').catch(err => console.error("Logout API call failed", err));
-        localStorage.removeItem('token');
+        localStorage.removeItem('authToken');
         localStorage.removeItem('user');
         setToken(null);
         setUser(mockUser);

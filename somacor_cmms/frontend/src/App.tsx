@@ -5,7 +5,7 @@ import React, { Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import ErrorBoundary from './components/shared/ErrorBoundary';
 import LoadingSpinner from './components/shared/LoadingSpinner';
-import AppLayout from './components/layout/AppLayout';
+import { AppLayout } from './components/layout/AppLayout';
 import ProtectedRoute from './components/ProtectedRoute';
 import { isAuthenticated } from './utils/auth';
 
@@ -26,6 +26,8 @@ const PlanesMantenimientoView = React.lazy(() => import('./pages/PlanesMantenimi
 const OrdenesTrabajoView = React.lazy(() => import('./pages/OrdenesTrabajoView'));
 const EjecucionOTView = React.lazy(() => import('./pages/EjecucionOTView'));
 const ChecklistView = React.lazy(() => import('./pages/ChecklistView'));
+const InventarioView = React.lazy(() => import('./pages/InventarioView'));
+const TecnicosView = React.lazy(() => import('./pages/TecnicosView'));
 
 // Componentes de autenticación
 const LoginView = React.lazy(() => import('./pages/LoginView'));
@@ -76,6 +78,51 @@ function App() {
             element={
               <Suspense fallback={<LoadingSpinner text="Cargando Dashboard..." />}>
                 <DashboardView />
+              </Suspense>
+            } 
+          />
+          
+          <Route 
+            path="equipos" 
+            element={
+              <Suspense fallback={<LoadingSpinner text="Cargando Equipos..." />}>
+                <EquiposMovilesView />
+              </Suspense>
+            } 
+          />
+          
+          <Route 
+            path="mantenimiento-preventivo" 
+            element={
+              <Suspense fallback={<LoadingSpinner text="Cargando Mantenimiento Preventivo..." />}>
+                <PlanesMantenimientoView />
+              </Suspense>
+            } 
+          />
+          
+          <Route 
+            path="inventario" 
+            element={
+              <Suspense fallback={<LoadingSpinner text="Cargando Inventario..." />}>
+                <InventarioView />
+              </Suspense>
+            } 
+          />
+          
+          <Route 
+            path="tecnicos" 
+            element={
+              <Suspense fallback={<LoadingSpinner text="Cargando Técnicos..." />}>
+                <TecnicosView />
+              </Suspense>
+            } 
+          />
+          
+          <Route 
+            path="configuracion" 
+            element={
+              <Suspense fallback={<LoadingSpinner text="Cargando Configuración..." />}>
+                <MaintenanceConfigView />
               </Suspense>
             } 
           />

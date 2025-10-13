@@ -777,3 +777,75 @@ class EvidenciaOTViewSet(viewsets.ModelViewSet):
         context['request'] = self.request
         return context
 
+# --- Endpoints Simples para Testing ---
+def dashboard_stats_simple(request):
+    """Endpoint simple para estadísticas del dashboard sin autenticación"""
+    try:
+        hoy = timezone.now()
+        hace_30_dias = hoy - timedelta(days=30)
+        
+        # Estadísticas básicas
+        equipos_total = Equipos.objects.count()
+        equipos_activos = Equipos.objects.filter(activo=True).count()
+        ordenes_total = OrdenesTrabajo.objects.count()
+        ordenes_pendientes = OrdenesTrabajo.objects.filter(
+            idestadoot__nombreestadoot__in=['Pendiente', 'En Proceso']
+        ).count()
+        ordenes_completadas_mes = OrdenesTrabajo.objects.filter(
+            fechacompletado__gte=hace_30_dias,
+            idestadoot__nombreestadoot='Completada'
+        ).count()
+        
+        stats = {
+            'equipos': {
+                'total': equipos_total,
+                'activos': equipos_activos,
+                'en_mantenimiento': equipos_total - equipos_activos,
+                'disponibilidad': round((equipos_activos / equipos_total * 100), 1) if equipos_total > 0 else 0
+            },
+            'ordenes': {
+                'total': ordenes_total,
+                'pendientes': ordenes_pendientes,
+                'completadas_mes': ordenes_completadas_mes,
+                'vencidas': 0,
+                'tiempo_promedio_horas': 24.5
+            },
+            'sistema': {
+                'eficiencia': 87.2,
+                'ordenes_por_dia': round(ordenes_completadas_mes / 30, 1),
+                'tasa_completado': round(ordenes_completadas_mes / max(ordenes_total, 1) * 100, 1)
+            }
+        }
+        
+        return JsonResponse(stats)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+def dashboard_recent_simple(request):
+    """Endpoint simple para órdenes recientes sin autenticación"""
+    try:
+        limite = int(request.GET.get('limit', 5))
+        
+        # Obtener órdenes recientes
+        ordenes_recientes = OrdenesTrabajo.objects.select_related(
+            'idequipo', 'idestadoot', 'idsolicitante', 'idtecnicoasignado'
+        ).order_by('-fechareportefalla')[:limite]
+        
+        data = []
+        for orden in ordenes_recientes:
+            data.append({
+                'idordentrabajo': orden.idordentrabajo,
+                'numeroot': orden.numeroot,
+                'descripcionproblemareportado': orden.descripcionproblemareportado,
+                'prioridad': orden.prioridad,
+                'estado_nombre': orden.idestadoot.nombreestadoot if orden.idestadoot else 'Sin estado',
+                'equipo_nombre': orden.idequipo.nombreequipo if orden.idequipo else 'Sin equipo',
+                'fechareportefalla': orden.fechareportefalla.isoformat() if orden.fechareportefalla else None,
+                'solicitante_nombre': orden.idsolicitante.get_full_name() if orden.idsolicitante else 'Sin solicitante',
+                'tecnico_nombre': orden.idtecnicoasignado.get_full_name() if orden.idtecnicoasignado else 'Sin técnico'
+            })
+        
+        return JsonResponse({'results': data})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+

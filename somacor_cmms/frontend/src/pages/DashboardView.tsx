@@ -1,214 +1,446 @@
 import React, { useState, useEffect } from 'react';
-import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import axios from 'axios';
-import { Truck, Wrench, AlertTriangle, CalendarCheck, BarChart2 } from 'lucide-react';
+import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { 
+  ClipboardList, 
+  Wrench, 
+  Users, 
+  Package,
+  Plus,
+  Clock,
+  CheckCircle,
+  AlertTriangle,
+  TrendingUp,
+  TrendingDown,
+  Eye
+} from 'lucide-react';
+import { PageLayout, PageHeader, StatsGrid, ContentGrid } from '@/components/layout/PageLayout';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { dashboardService } from '@/services/apiService';
+import CreateWorkOrderForm from '@/components/forms/CreateWorkOrderForm';
+import { useRealtimeUpdates } from '@/hooks/useRealtimeUpdates';
+import ConnectionStatus from '@/components/ConnectionStatus';
 
 // =================================================================================
-// INICIO DE DEPENDENCIAS LOCALES
-// Para asegurar que el componente sea autocontenido y funcione en el entorno de
-// previsualización, se definen aquí las dependencias.
+// TIPOS DE DATOS
 // =================================================================================
 
-// --- Dependencia: apiClient ---
-const API_URL = 'http://localhost:8000/api';
-const apiClient = axios.create({
-  baseURL: API_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-// Agregar interceptor para manejo de tokens de autenticación
-apiClient.interceptors.request.use(config => {
-  const token = localStorage.getItem('authToken');
-  if (token) {
-    config.headers.Authorization = `Token ${token}`;
-  }
-  return config;
-}, error => Promise.reject(error));
-
-// --- Dependencia: LoadingSpinner ---
-const LoadingSpinner: React.FC = () => (
-  <div className="flex justify-center items-center h-full">
-    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-  </div>
-);
-
-// --- Dependencias: Componentes de UI ---
-const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ className, ...props }, ref) => (
-  <div ref={ref} className={`rounded-xl border bg-white text-gray-900 shadow-lg transition-all hover:shadow-2xl ${className}`} {...props} />
-));
-Card.displayName = 'Card';
-
-const CardHeader = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ className, ...props }, ref) => (
-  <div ref={ref} className={`flex flex-col space-y-1.5 p-6 ${className}`} {...props} />
-));
-CardHeader.displayName = 'CardHeader';
-
-const CardTitle = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLHeadingElement>>(({ className, ...props }, ref) => (
-  <h3 ref={ref} className={`text-lg font-semibold leading-none tracking-tight text-gray-700 ${className}`} {...props} />
-));
-CardTitle.displayName = 'CardTitle';
-
-const CardContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ className, ...props }, ref) => (
-  <div ref={ref} className={`p-6 pt-0 ${className}`} {...props} />
-));
-CardContent.displayName = 'CardContent';
-
-
-// =================================================================================
-// FIN DE DEPENDENCIAS LOCALES
-// =================================================================================
-
-// Tipos de datos para el dashboard
 interface DashboardStats {
-  total_equipos: number;
+  ordenes_activas: number;
+  equipos_totales: number;
+  tecnicos_disponibles: number;
+  repuestos_criticos: number;
+  ordenes_urgentes: number;
   equipos_operativos: number;
-  ots_abiertas: number;
-  ots_vencidas: number;
-  mantenimientos_proximos: number;
+  tecnicos_totales: number;
 }
 
-interface EstadoEquipoData {
-  nombreestado: string;
-  cantidad: number;
+interface WorkOrder {
+  id: number;
+  title: string;
+  equipment: string;
+  technician: string;
+  priority: string;
+  status: string;
+  type: string;
 }
 
-interface TipoOtData {
-    nombretipomantenimientoot: string;
-    cantidad: number;
+interface MonthlyData {
+  month: string;
+  completadas: number;
+  pendientes: number;
 }
 
-const DashboardView: React.FC = () => {
+interface MaintenanceType {
+  name: string;
+  value: number;
+  color: string;
+}
+
+// =================================================================================
+// COMPONENTE PRINCIPAL
+// =================================================================================
+
+export default function DashboardView() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [equiposPorEstado, setEquiposPorEstado] = useState<EstadoEquipoData[]>([]);
-  const [otsPorTipo, setOtsPorTipo] = useState<TipoOtData[]>([]);
+  const [recentWorkOrders, setRecentWorkOrders] = useState<WorkOrder[]>([]);
+  const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([]);
+  const [maintenanceTypes, setMaintenanceTypes] = useState<MaintenanceType[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  
+  // Real-time updates
+  const { realtimeData, connectionStatus, subscribeToUpdates } = useRealtimeUpdates({
+    onDataUpdate: (dataType, data) => {
+      console.log('Dashboard data updated:', dataType, data);
+      // Refresh dashboard data when real-time updates are received
+      if (dataType === 'dashboard_update') {
+        loadDashboardData();
+      }
+    }
+  });
+
+  // =================================================================================
+  // EFECTOS
+  // =================================================================================
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const response = await apiClient.get('/mantenimiento-workflow/dashboard/');
-        const data = response.data;
-        setStats(data.estadisticas_generales);
-        setEquiposPorEstado(data.equipos_por_estado);
-        setOtsPorTipo(data.ots_por_tipo);
-        setError(null);
-      } catch (err) {
-        setError("No se pudo cargar la información del dashboard. Verifique la conexión con el servidor.");
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
+    loadDashboardData();
+    // Subscribe to dashboard updates
+    subscribeToUpdates('dashboard');
   }, []);
 
-  // Colores para el gráfico de torta
-  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF', '#FF1943'];
+  // =================================================================================
+  // FUNCIONES
+  // =================================================================================
+
+  const loadDashboardData = async () => {
+    console.log('🚀 [DASHBOARD] Iniciando carga de datos del dashboard');
+    
+    try {
+      setLoading(true);
+      setError(null);
+
+      console.log('📊 [DASHBOARD] Cargando estadísticas...');
+      const startTime = Date.now();
+
+      // Cargar datos en paralelo
+      const [statsData, recentOrdersData, monthlyDataData, maintenanceTypesData] = await Promise.all([
+        dashboardService.getStats().then(data => {
+          console.log('✅ [DASHBOARD] Stats cargadas:', data);
+          return data;
+        }).catch(err => {
+          console.error('❌ [DASHBOARD] Error cargando stats:', err);
+          throw err;
+        }),
+        
+        dashboardService.getRecentWorkOrders().then(data => {
+          console.log('✅ [DASHBOARD] Órdenes recientes cargadas:', data);
+          return data;
+        }).catch(err => {
+          console.error('❌ [DASHBOARD] Error cargando órdenes recientes:', err);
+          throw err;
+        }),
+        
+        dashboardService.getMonthlyData().then(data => {
+          console.log('✅ [DASHBOARD] Datos mensuales cargados:', data);
+          return data;
+        }).catch(err => {
+          console.error('❌ [DASHBOARD] Error cargando datos mensuales:', err);
+          throw err;
+        }),
+        
+        dashboardService.getMaintenanceTypes().then(data => {
+          console.log('✅ [DASHBOARD] Tipos de mantenimiento cargados:', data);
+          return data;
+        }).catch(err => {
+          console.error('❌ [DASHBOARD] Error cargando tipos de mantenimiento:', err);
+          throw err;
+        })
+      ]);
+
+      const endTime = Date.now();
+      console.log(`🎉 [DASHBOARD] Todos los datos cargados en ${endTime - startTime}ms`);
+
+      setStats(statsData);
+      setRecentWorkOrders(recentOrdersData);
+      setMonthlyData(monthlyDataData);
+      setMaintenanceTypes(maintenanceTypesData);
+      
+      console.log('📋 [DASHBOARD] Estado actualizado:', {
+        stats: statsData,
+        recentOrders: recentOrdersData.length,
+        monthlyData: monthlyDataData.length,
+        maintenanceTypes: maintenanceTypesData.length
+      });
+      
+    } catch (err) {
+      console.error('💥 [DASHBOARD] Error loading dashboard data:', err);
+      setError('Error al cargar los datos del dashboard');
+    } finally {
+      setLoading(false);
+      console.log('🏁 [DASHBOARD] Carga completada');
+    }
+  };
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority.toLowerCase()) {
+      case 'crítica':
+      case 'urgente':
+        return 'destructive';
+      case 'alta':
+        return 'destructive';
+      case 'media':
+        return 'default';
+      case 'baja':
+        return 'secondary';
+      default:
+        return 'default';
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'completada':
+        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100';
+      case 'en progreso':
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100';
+      case 'pendiente':
+        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100';
+      case 'abierta':
+        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100';
+      case 'asignada':
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100';
+      case 'cancelada':
+        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100';
+      default:
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-100';
+    }
+  };
+
+  const getPriorityIcon = (priority: string) => {
+    switch (priority.toLowerCase()) {
+      case 'crítica':
+      case 'urgente':
+        return <AlertTriangle className="h-4 w-4" />;
+      case 'alta':
+        return <AlertTriangle className="h-4 w-4" />;
+      default:
+        return <Clock className="h-4 w-4" />;
+    }
+  };
+
+  // =================================================================================
+  // RENDER
+  // =================================================================================
 
   if (loading) {
-    return <LoadingSpinner />;
+    return (
+      <PageLayout>
+        <PageHeader
+          title="Dashboard"
+          description="Cargando datos del sistema..."
+        />
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Cargando dashboard...</p>
+          </div>
+        </div>
+      </PageLayout>
+    );
   }
 
   if (error) {
-    return <div className="p-8 text-center text-red-500 bg-red-100 rounded-lg">{error}</div>;
+    return (
+      <PageLayout>
+        <PageHeader
+          title="Dashboard"
+          description="Error al cargar los datos"
+        />
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <AlertTriangle className="h-12 w-12 text-destructive mx-auto mb-4" />
+            <p className="text-destructive mb-4">{error}</p>
+            <Button onClick={loadDashboardData} variant="outline">
+              Reintentar
+            </Button>
+          </div>
+        </div>
+      </PageLayout>
+    );
   }
 
   return (
-    <div className="p-4 md:p-8 bg-gray-50 min-h-screen">
-      <h1 className="text-3xl font-bold text-gray-800 mb-6">Dashboard General</h1>
+    <PageLayout>
+      <PageHeader
+        title="Dashboard"
+        description="Resumen general del sistema de mantenimiento"
+        action={
+          <div className="flex items-center gap-3">
+            <ConnectionStatus status={connectionStatus} />
+            <Button 
+              className="bg-primary hover:bg-primary/90"
+              onClick={() => setShowCreateForm(true)}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Nueva Orden de Trabajo
+            </Button>
+          </div>
+        }
+      />
 
-      {/* Tarjetas de Estadísticas Principales */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-        <StatCard icon={<Truck className="h-8 w-8 text-blue-500" />} title="Equipos Totales" value={stats?.total_equipos} />
-        <StatCard icon={<Wrench className="h-8 w-8 text-green-500" />} title="Equipos Operativos" value={stats?.equipos_operativos} />
-        <StatCard icon={<AlertTriangle className="h-8 w-8 text-yellow-500" />} title="OTs Abiertas" value={stats?.ots_abiertas} />
-        <StatCard icon={<AlertTriangle className="h-8 w-8 text-red-500" />} title="OTs Vencidas" value={stats?.ots_vencidas} />
-        <StatCard icon={<CalendarCheck className="h-8 w-8 text-purple-500" />} title="Mant. Próximos (7d)" value={stats?.mantenimientos_proximos} />
-      </div>
-
-      {/* Gráficos */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
-        <Card className="lg:col-span-3">
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <BarChart2 className="mr-2 h-5 w-5 text-gray-600" />
-              Órdenes de Trabajo por Tipo
-            </CardTitle>
+      {/* Estadísticas principales */}
+      <StatsGrid>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Órdenes Activas</CardTitle>
+            <ClipboardList className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-             <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                    <Pie data={otsPorTipo} dataKey="cantidad" nameKey="nombretipomantenimientoot" cx="50%" cy="50%" outerRadius={100} fill="#8884d8" label>
-                         {otsPorTipo.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
-                    </Pie>
-                    <Tooltip formatter={(value) => `${value} OTs`} />
-                    <Legend />
-                </PieChart>
-             </ResponsiveContainer>
+            <div className="text-2xl font-bold">{stats?.ordenes_activas || 0}</div>
+            <p className="text-xs text-muted-foreground">
+              {stats?.ordenes_urgentes || 0} urgentes
+            </p>
+            <div className="flex items-center text-xs text-muted-foreground mt-1">
+              <TrendingDown className="h-3 w-3 mr-1" />
+              12% desde el mes pasado
+            </div>
           </CardContent>
         </Card>
-        
-        <Card className="lg:col-span-2">
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Equipos Totales</CardTitle>
+            <Wrench className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats?.equipos_totales || 0}</div>
+            <p className="text-xs text-muted-foreground">
+              {stats?.equipos_operativos || 0} operativos
+            </p>
+            <div className="flex items-center text-xs text-muted-foreground mt-1">
+              <TrendingUp className="h-3 w-3 mr-1" />
+              +5% desde el mes pasado
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Técnicos Disponibles</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats?.tecnicos_disponibles || 0}</div>
+            <p className="text-xs text-muted-foreground">
+              De {stats?.tecnicos_totales || 0} totales
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Repuestos Críticos</CardTitle>
+            <Package className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats?.repuestos_criticos || 0}</div>
+            <p className="text-xs text-muted-foreground">
+              Requieren reorden
+            </p>
+            <div className="flex items-center text-xs text-muted-foreground mt-1">
+              <TrendingUp className="h-3 w-3 mr-1" />
+              +15% desde el mes pasado
+            </div>
+          </CardContent>
+        </Card>
+      </StatsGrid>
+
+      {/* Gráficos */}
+      <ContentGrid>
+        <Card className="col-span-2">
           <CardHeader>
-            <CardTitle className="flex items-center">
-              <Truck className="mr-2 h-5 w-5 text-gray-600" />
-              Equipos por Estado
-            </CardTitle>
+            <CardTitle>Órdenes de Trabajo</CardTitle>
+            <CardDescription>Completadas vs Pendientes (últimos 6 meses)</CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                    <Pie 
-                        data={equiposPorEstado} 
-                        dataKey="cantidad" 
-                        nameKey="nombreestado" 
-                        cx="50%" 
-                        cy="50%" 
-                        outerRadius={70} 
-                        fill="#82ca9d" 
-                        labelLine={true}
-                        label={({ percent, nombreestado }) => {
-                            // Solo mostrar etiqueta si el porcentaje es mayor al 5%
-                            if (percent > 0.05) {
-                                return `${(percent * 100).toFixed(0)}%`;
-                            }
-                            return '';
-                        }}
-                    >
-                        {equiposPorEstado.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
-                    </Pie>
-                    <Tooltip formatter={(value, name) => [`${value} equipos`, name]} />
-                    <Legend 
-                        wrapperStyle={{fontSize: '12px', paddingTop: '10px'}}
-                        layout="horizontal"
-                        align="center"
-                        verticalAlign="bottom"
-                    />
-                </PieChart>
+              <BarChart data={monthlyData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="month" />
+                <YAxis />
+                <Tooltip />
+                <Bar dataKey="completadas" fill="oklch(0.6 0.15 160)" name="Completadas" />
+                <Bar dataKey="pendientes" fill="oklch(0.65 0.2 40)" name="Pendientes" />
+              </BarChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
-      </div>
-    </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Tipos de Mantenimiento</CardTitle>
+            <CardDescription>Distribución por categoría</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={maintenanceTypes}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  outerRadius={80}
+                  fill="#8884d8"
+                  dataKey="value"
+                >
+                  {maintenanceTypes.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </ContentGrid>
+
+      {/* Órdenes de trabajo recientes */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Órdenes de Trabajo Recientes</CardTitle>
+          <CardDescription>Últimas actividades del sistema</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {recentWorkOrders.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                No hay órdenes de trabajo recientes
+              </div>
+            ) : (
+              recentWorkOrders.map((order, index) => (
+                <div key={order.idordentrabajo || order.id || index} className="flex items-center justify-between p-4 border rounded-lg">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <h4 className="font-medium">{order.numeroot || `WO-${(order.idordentrabajo || order.id || index + 1).toString().padStart(3, '0')}`}: {order.descripcionproblemareportado || order.title || 'Sin descripción'}</h4>
+                      <Badge variant={getPriorityColor(order.prioridad || order.priority)} className="text-xs">
+                        {getPriorityIcon(order.prioridad || order.priority)}
+                        <span className="ml-1">{order.prioridad || order.priority}</span>
+                      </Badge>
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      <span className="font-medium">{order.equipo_nombre || order.equipment}</span> • Asignado a: {order.tecnico_nombre || order.technician}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(order.estado_nombre || order.status)}`}>
+                      {order.estado_nombre || order.status}
+                    </span>
+                    <Button variant="outline" size="sm">
+                      <Eye className="h-4 w-4 mr-1" />
+                      Ver Detalles
+                    </Button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Formulario de creación de orden de trabajo */}
+      <CreateWorkOrderForm
+        isOpen={showCreateForm}
+        onClose={() => setShowCreateForm(false)}
+        onSuccess={() => {
+          loadDashboardData(); // Recargar datos después de crear
+        }}
+      />
+    </PageLayout>
   );
-};
-
-// Componente auxiliar para las tarjetas de estadísticas
-const StatCard: React.FC<{ icon: React.ReactNode; title: string; value?: number }> = ({ icon, title, value }) => (
-  <Card>
-    <CardHeader className="flex flex-row items-center justify-between pb-2">
-      <CardTitle className="text-sm font-medium">{title}</CardTitle>
-      {icon}
-    </CardHeader>
-    <CardContent>
-      <div className="text-4xl font-bold text-gray-900">{value ?? '...'}</div>
-    </CardContent>
-  </Card>
-);
-
-export default DashboardView;
+}

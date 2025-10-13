@@ -1,333 +1,524 @@
-// src/pages/CalendarView.tsx
-// ARCHIVO CORREGIDO: Se ajusta el payload enviado al guardar un evento.
+import React, { useState, useEffect } from 'react';
+import { 
+  Calendar as CalendarIcon, 
+  Plus, 
+  Filter, 
+  ChevronLeft, 
+  ChevronRight,
+  Clock,
+  Wrench,
+  CheckCircle,
+  AlertTriangle,
+  Eye,
+  Edit,
+  Trash2
+} from 'lucide-react';
+import { PageLayout, PageHeader, StatsGrid, ContentGrid } from '@/components/layout/PageLayout';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import CreateWorkOrderForm from '@/components/forms/CreateWorkOrderForm';
+import { ordenesTrabajoServiceReal } from '@/services/apiServiceReal';
 
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
-import { Calendar, momentLocalizer, Views, type Event } from 'react-big-calendar';
-import moment from 'moment';
-import 'moment/locale/es';
-import 'react-big-calendar/lib/css/react-big-calendar.css';
+// =================================================================================
+// TIPOS DE DATOS
+// =================================================================================
 
-import Modal from '../components/ui/Modal'; 
-import apiClient from '../api/apiClient';
-import { ChevronLeft, ChevronRight, Trash2, Edit } from 'lucide-react';
-
-// --- Configuración de Moment.js para español ---
-moment.locale('es');
-const localizer = momentLocalizer(moment);
-
-// --- Interfaces para tipado ---
-interface MyEvent extends Event {
-    id: number;
-    type: string;
-    notes?: string;
+interface CalendarEvent {
+  id: string;
     title: string;
+  date: string;
+  time: string;
+  type: 'preventivo' | 'correctivo' | 'predictivo' | 'inspeccion';
+  equipment: string;
+  technician: string;
+  status: 'programado' | 'en_progreso' | 'completado' | 'cancelado';
+  priority: 'baja' | 'media' | 'alta' | 'urgente';
+  description?: string;
 }
 
-interface ApiEvent {
-    id: number;
-    title: string;
-    start: string;
-    end: string;
-    type: string;
-    notes?: string;
+interface CalendarStats {
+  totalEventos: number;
+  estaSemana: number;
+  vencidos: number;
+  completados: number;
 }
 
-// --- Componentes Personalizados (sin cambios) ---
-const CustomEvent: React.FC<{ event: MyEvent }> = ({ event }) => {
-    const eventTypeClasses: { [key: string]: string } = {
-        'mantenimiento preventivo': 'bg-blue-500 hover:bg-blue-600',
-        'mantenimiento correctivo': 'bg-orange-500 hover:bg-orange-600',
-        'mantenimiento predictivo': 'bg-green-500 hover:bg-green-600',
-        'preventivo': 'bg-blue-500 hover:bg-blue-600',
-        'correctivo': 'bg-orange-500 hover:bg-orange-600',
-        'predictivo': 'bg-green-500 hover:bg-green-600',
-        'inspeccion': 'bg-teal-500 hover:bg-teal-600',
-        'general': 'bg-gray-500 hover:bg-gray-600',
-    };
-    const baseClasses = 'p-1 text-white rounded-lg text-xs truncate transition-colors h-full flex items-center';
-    const eventClasses = `${baseClasses} ${eventTypeClasses[event.type] || eventTypeClasses.general}`;
-    return <div className={eventClasses}><span>{event.title}</span></div>;
-};
+// =================================================================================
+// COMPONENTE PRINCIPAL
+// =================================================================================
 
-interface CustomToolbarProps {
-    label: string;
-    onNavigate: (action: string) => void;
-}
+const CalendarView: React.FC = () => {
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [typeFilter, setTypeFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [stats, setStats] = useState<CalendarStats | null>(null);
+  const [showCreateForm, setShowCreateForm] = useState(false);
 
-const CustomToolbar: React.FC<CustomToolbarProps> = ({ label, onNavigate }) => {
-    return (
-        <div className="rbc-toolbar mb-4">
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                     <button onClick={() => onNavigate("TODAY")} className="px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700">Hoy</button>
-                     <button onClick={() => onNavigate("PREV")} className="p-2 text-gray-600 bg-gray-200 rounded-full hover:bg-gray-300"><ChevronLeft size={20} /></button>
-                     <button onClick={() => onNavigate("NEXT")} className="p-2 text-gray-600 bg-gray-200 rounded-full hover:bg-gray-300"><ChevronRight size={20} /></button>
-                </div>
-                <h2 className="text-xl font-bold text-gray-700 capitalize">{label}</h2>
-                <div className="w-40"></div>
+  // Datos de ejemplo para el diseño
+  const mockEvents: CalendarEvent[] = [
+    {
+      id: '1',
+      title: 'Mantenimiento Preventivo Compresor A-101',
+      date: '2024-10-15',
+      time: '08:00',
+      type: 'preventivo',
+      equipment: 'Compresor de Aire Principal',
+      technician: 'Juan Pérez',
+      status: 'programado',
+      priority: 'media',
+      description: 'Mantenimiento trimestral del compresor principal'
+    },
+    {
+      id: '2',
+      title: 'Reparación Bomba B-205',
+      date: '2024-10-16',
+      time: '10:30',
+      type: 'correctivo',
+      equipment: 'Bomba Centrífuga B-205',
+      technician: 'María García',
+      status: 'en_progreso',
+      priority: 'alta',
+      description: 'Cambio de sello mecánico y revisión de rodamientos'
+    },
+    {
+      id: '3',
+      title: 'Inspección Motor C-310',
+      date: '2024-10-17',
+      time: '14:00',
+      type: 'inspeccion',
+      equipment: 'Motor Eléctrico C-310',
+      technician: 'Carlos López',
+      status: 'programado',
+      priority: 'baja',
+      description: 'Inspección visual y medición de vibraciones'
+    },
+    {
+      id: '4',
+      title: 'Análisis Predictivo Válvula D-115',
+      date: '2024-10-18',
+      time: '09:15',
+      type: 'predictivo',
+      equipment: 'Válvula de Control D-115',
+      technician: 'Ana Martínez',
+      status: 'completado',
+      priority: 'media',
+      description: 'Análisis de tendencias y predicción de fallas'
+    },
+    {
+      id: '5',
+      title: 'Mantenimiento Urgente Motor E-420',
+      date: '2024-10-19',
+      time: '07:00',
+      type: 'correctivo',
+      equipment: 'Motor Eléctrico E-420',
+      technician: 'Pedro Rodríguez',
+      status: 'programado',
+      priority: 'urgente',
+      description: 'Falla en el sistema de refrigeración'
+    }
+  ];
+
+  const mockStats: CalendarStats = {
+    totalEventos: 45,
+    estaSemana: 8,
+    vencidos: 2,
+    completados: 12
+  };
+
+  useEffect(() => {
+    // Simular carga de datos
+    setEvents(mockEvents);
+    setStats(mockStats);
+  }, []);
+
+  // Obtener eventos del mes actual
+  const getCurrentMonthEvents = () => {
+    return events.filter(event => {
+      const eventDate = new Date(event.date);
+      return eventDate.getMonth() === selectedMonth && 
+             eventDate.getFullYear() === selectedYear;
+    });
+  };
+
+  // Obtener eventos filtrados
+  const getFilteredEvents = () => {
+    let filtered = getCurrentMonthEvents();
+
+    if (typeFilter !== 'all') {
+      filtered = filtered.filter(event => event.type === typeFilter);
+    }
+
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(event => event.status === statusFilter);
+    }
+
+    return filtered;
+  };
+
+  // Generar días del mes
+  const generateCalendarDays = () => {
+    const firstDay = new Date(selectedYear, selectedMonth, 1);
+    const lastDay = new Date(selectedYear, selectedMonth + 1, 0);
+    const startDate = new Date(firstDay);
+    startDate.setDate(startDate.getDate() - firstDay.getDay());
+
+    const days = [];
+    const current = new Date(startDate);
+
+    for (let i = 0; i < 42; i++) {
+      days.push(new Date(current));
+      current.setDate(current.getDate() + 1);
+    }
+
+    return days;
+  };
+
+  // Obtener eventos para un día específico
+  const getEventsForDay = (date: Date) => {
+    const dateStr = date.toISOString().split('T')[0];
+    return getFilteredEvents().filter(event => event.date === dateStr);
+  };
+
+  // Navegación del calendario
+  const goToPreviousMonth = () => {
+    if (selectedMonth === 0) {
+      setSelectedMonth(11);
+      setSelectedYear(selectedYear - 1);
+    } else {
+      setSelectedMonth(selectedMonth - 1);
+    }
+  };
+
+  const goToNextMonth = () => {
+    if (selectedMonth === 11) {
+      setSelectedMonth(0);
+      setSelectedYear(selectedYear + 1);
+    } else {
+      setSelectedMonth(selectedMonth + 1);
+    }
+  };
+
+  const goToToday = () => {
+    const today = new Date();
+    setSelectedMonth(today.getMonth());
+    setSelectedYear(today.getFullYear());
+  };
+
+  // Obtener badge de tipo
+  const getTypeBadge = (type: string) => {
+    switch (type) {
+      case 'preventivo':
+        return <Badge variant="default" className="bg-blue-100 text-blue-800 hover:bg-blue-200">Preventivo</Badge>;
+      case 'correctivo':
+        return <Badge variant="default" className="bg-orange-100 text-orange-800 hover:bg-orange-200">Correctivo</Badge>;
+      case 'predictivo':
+        return <Badge variant="default" className="bg-green-100 text-green-800 hover:bg-green-200">Predictivo</Badge>;
+      case 'inspeccion':
+        return <Badge variant="default" className="bg-purple-100 text-purple-800 hover:bg-purple-200">Inspección</Badge>;
+      default:
+        return <Badge variant="secondary">{type}</Badge>;
+    }
+  };
+
+  // Obtener badge de estado
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'programado':
+        return <Badge variant="default" className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200"><Clock className="h-3 w-3 mr-1" />Programado</Badge>;
+      case 'en_progreso':
+        return <Badge variant="default" className="bg-blue-100 text-blue-800 hover:bg-blue-200"><Wrench className="h-3 w-3 mr-1" />En Progreso</Badge>;
+      case 'completado':
+        return <Badge variant="default" className="bg-green-100 text-green-800 hover:bg-green-200"><CheckCircle className="h-3 w-3 mr-1" />Completado</Badge>;
+      case 'cancelado':
+        return <Badge variant="destructive"><AlertTriangle className="h-3 w-3 mr-1" />Cancelado</Badge>;
+      default:
+        return <Badge variant="secondary">{status}</Badge>;
+    }
+  };
+
+  // Obtener badge de prioridad
+  const getPriorityBadge = (priority: string) => {
+    switch (priority) {
+      case 'baja':
+        return <Badge variant="secondary">Baja</Badge>;
+      case 'media':
+        return <Badge variant="default" className="bg-blue-100 text-blue-800">Media</Badge>;
+      case 'alta':
+        return <Badge variant="default" className="bg-orange-100 text-orange-800">Alta</Badge>;
+      case 'urgente':
+        return <Badge variant="destructive">Urgente</Badge>;
+      default:
+        return <Badge variant="secondary">{priority}</Badge>;
+    }
+  };
+
+  const monthNames = [
+    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+  ];
+
+  const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+
+  const calendarDays = generateCalendarDays();
+  const filteredEvents = getFilteredEvents();
+
+  return (
+    <PageLayout>
+      <PageHeader 
+        title="Calendario de Mantenimiento" 
+        subtitle="Programación y seguimiento de actividades de mantenimiento"
+      >
+        <Button onClick={() => setShowCreateForm(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          Nuevo Evento
+        </Button>
+      </PageHeader>
+
+      {/* Tarjetas de estadísticas */}
+      <StatsGrid>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Eventos</CardTitle>
+            <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats?.totalEventos}</div>
+            <p className="text-xs text-muted-foreground">
+              Eventos programados este mes
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Esta Semana</CardTitle>
+            <Clock className="h-4 w-4 text-blue-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-600">{stats?.estaSemana}</div>
+            <p className="text-xs text-muted-foreground">
+              Actividades programadas
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Vencidos</CardTitle>
+            <AlertTriangle className="h-4 w-4 text-destructive" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-destructive">{stats?.vencidos}</div>
+            <p className="text-xs text-muted-foreground">
+              Requieren atención urgente
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Completados</CardTitle>
+            <CheckCircle className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">{stats?.completados}</div>
+            <p className="text-xs text-muted-foreground">
+              Actividades finalizadas
+            </p>
+          </CardContent>
+        </Card>
+      </StatsGrid>
+
+      {/* Calendario y filtros */}
+      <ContentGrid>
+        <Card>
+          <CardHeader>
+            <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center">
+              <div>
+                <CardTitle>Calendario de Actividades</CardTitle>
+                <CardDescription>
+                  Vista mensual de eventos de mantenimiento programados
+                </CardDescription>
+              </div>
+              
+              <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
+                <Select value={typeFilter} onValueChange={setTypeFilter}>
+                  <SelectTrigger className="w-full md:w-48">
+                    <SelectValue placeholder="Tipo de evento" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos los tipos</SelectItem>
+                    <SelectItem value="preventivo">Preventivo</SelectItem>
+                    <SelectItem value="correctivo">Correctivo</SelectItem>
+                    <SelectItem value="predictivo">Predictivo</SelectItem>
+                    <SelectItem value="inspeccion">Inspección</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-full md:w-48">
+                    <SelectValue placeholder="Estado" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos los estados</SelectItem>
+                    <SelectItem value="programado">Programado</SelectItem>
+                    <SelectItem value="en_progreso">En Progreso</SelectItem>
+                    <SelectItem value="completado">Completado</SelectItem>
+                    <SelectItem value="cancelado">Cancelado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-        </div>
-    );
-};
-
-interface EventFormProps {
-    event?: MyEvent;
-    slot?: { start: Date; end: Date; };
-    onSave: (eventData: MyEvent) => void;
-    onCancel: () => void;
-}
-
-const EventForm: React.FC<EventFormProps> = ({ event, slot, onSave, onCancel }) => {
-    const [title, setTitle] = useState<string>("");
-    const [start, setStart] = useState<string>("");
-    const [end, setEnd] = useState<string>("");
-    const [type, setType] = useState<string>("general");
-    const [notes, setNotes] = useState<string>("");
-
-    useEffect(() => {
-        const initialStart = event?.start || slot?.start;
-        const initialEnd = event?.end || slot?.end;
-        setTitle(event?.title || "");
-        setStart(moment(initialStart).format("YYYY-MM-DDTHH:mm"));
-        setEnd(moment(initialEnd).format("YYYY-MM-DDTHH:mm"));
-        setType(event?.type || "general");
-        setNotes(event?.notes || "");
-    }, [event, slot]);
-
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        onSave({ id: event?.id, title, start: new Date(start), end: new Date(end), type, notes });
-    };
-
-    return (
-        <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-                <label className="block text-sm font-medium text-gray-700">Título del Evento</label>
-                <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md" required />
-            </div>
-            <div>
-                <label className="block text-sm font-medium text-gray-700">Tipo</label>
-                <select value={type} onChange={(e) => setType(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md">
-                    <option value="general">General</option>
-                    <option value="preventivo">Preventivo</option>
-                    <option value="correctivo">Correctivo</option>
-                    <option value="inspeccion">Inspección</option>
-                </select>
-            </div>
-            <div>
-                <label className="block text-sm font-medium text-gray-700">Notas</label>
-                <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"></textarea>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <label className="block text-sm font-medium text-gray-700">Inicio</label>
-                    <input type="datetime-local" value={start} onChange={(e) => setStart(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md" required />
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-700">Fin</label>
-                    <input type="datetime-local" value={end} onChange={(e) => setEnd(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md" required />
-                </div>
-            </div>
-            <div className="flex justify-end pt-4 space-x-3">
-                <button type="button" onClick={onCancel} className="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300">Cancelar</button>
-                <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">Guardar</button>
-            </div>
-        </form>
-    );
-};
-
-
-// --- Vista Principal del Calendario ---
-const CalendarView = () => {
-    const [events, setEvents] = useState<MyEvent[]>([]);
-    const [modalState, setModalState] = useState<{isOpen: boolean; mode: 'create' | 'edit' | 'view' | null; data: any}>({ isOpen: false, mode: null, data: null });
-    const [loading, setLoading] = useState(true);
-
-    const fetchEvents = useCallback(async () => {
-        setLoading(true);
-        try {
-            const response = await apiClient.get<{results: any[]}>('agendas/');
-            const formattedEvents: MyEvent[] = (Array.isArray(response.data) ? response.data : response.data.results || []).map((event: any) => ({
-                id: event.idagenda,
-                title: event.tituloevento,
-                start: new Date(event.fechahorainicio),
-                end: new Date(event.fechahorafin),
-                type: event.tipoevento?.toLowerCase() || 'general',
-                notes: event.descripcionevento,
-            }));
-            setEvents(formattedEvents);
-            console.log('Eventos cargados:', formattedEvents.length);
-        } catch (error) {
-            console.error("Error al cargar los eventos:", error);
-            alert("No se pudieron cargar los eventos del calendario.");
-        } finally {
-            setLoading(false);
-        }
-    }, []);
-
-    useEffect(() => {
-        fetchEvents();
-    }, [fetchEvents]);
-
-    const handleSelectSlot = useCallback((slotInfo) => {
-        setModalState({ isOpen: true, mode: 'create', data: { slot: slotInfo } });
-    }, []);
-
-    const handleSelectEvent = useCallback((event: MyEvent) => {
-        setModalState({ isOpen: true, mode: 'view', data: { event } });
-    }, []);
-    
-    const handleSaveEvent = useCallback(async (eventData: MyEvent) => {
-        // --- CORRECCIÓN ---
-        // Se ajusta el payload para que coincida con los campos que espera
-        // el AgendaSerializer del backend ('title', 'start', 'end', etc.).
-        const payload = {
-            title: eventData.title,
-            start: moment(eventData.start).toISOString(),
-            end: moment(eventData.end).toISOString(),
-            type: eventData.type,
-            notes: eventData.notes,
-        };
-
-        try {
-            if (modalState.mode === 'create') {
-                await apiClient.post('agendas/', payload);
-            } else if (modalState.mode === 'edit') {
-                await apiClient.put(`agendas/${eventData.id}/`, payload);
-            }
-            setModalState({ isOpen: false, mode: null, data: null });
-            fetchEvents();
-        } catch (error) {
-            console.error("Error al guardar el evento:", error.response?.data || error.message);
-            alert("No se pudo guardar el evento. Revise la consola para más detalles.");
-        }
-    }, [modalState.mode, fetchEvents]);
-    
-    const handleSyncMaintenance = useCallback(async () => {
-        try {
-            setLoading(true);
-            const response = await apiClient.post('agendas/sincronizar-mantenciones/');
-            
-            if (response.data.message) {
-                alert(`Sincronización exitosa: ${response.data.message}`);
-                fetchEvents(); // Recargar eventos después de la sincronización
-            }
-        } catch (error) {
-            console.error("Error al sincronizar mantenciones:", error);
-            alert("Error al sincronizar mantenciones. Revise la consola para más detalles.");
-        } finally {
-            setLoading(false);
-        }
-    }, [fetchEvents]);
-    
-    const handleDeleteEvent = useCallback(async (eventId: number) => {
-        if (window.confirm("¿Está seguro de que desea eliminar este evento?")) {
-            try {
-                await apiClient.delete(`agendas/${eventId}/`);
-                setModalState({ isOpen: false, mode: null, data: null });
-                fetchEvents();
-            } catch (error) {
-                console.error("Error al eliminar el evento:", error);
-                alert("No se pudo eliminar el evento.");
-            }
-        }
-    }, [fetchEvents]);
-
-    const components = useMemo(() => ({
-        event: CustomEvent,
-        toolbar: CustomToolbar
-    }), []);
-
-    const messages = {
-      allDay: 'Todo el día',
-      previous: 'Anterior',
-      next: 'Siguiente',
-      today: 'Hoy',
-      month: 'Mes',
-      week: 'Semana',
-      day: 'Día',
-      agenda: 'Agenda',
-      date: 'Fecha',
-      time: 'Hora',
-      event: 'Evento',
-      noEventsInRange: 'No hay eventos en este rango.',
-      showMore: total => `+ Ver más (${total})`
-    };
-    
-    if (loading) return <p>Cargando calendario...</p>;
-
-    const renderModalContent = () => {
-        const { mode, data } = modalState;
-        if (mode === 'create' || mode === 'edit') {
-            return <EventForm event={data?.event} slot={data?.slot} onSave={handleSaveEvent} onCancel={() => setModalState({ isOpen: false, mode: null, data: null })} />;
-        }
-        if (mode === 'view' && data?.event) {
-            const event = data.event as MyEvent;
-            return (
-                <div className="space-y-4">
-                    <p><strong className="text-gray-600">Tipo:</strong> <span className="capitalize">{event.type}</span></p>
-                    <p><strong className="text-gray-600">Desde:</strong> {moment(event.start).format('DD/MM/YYYY HH:mm')}</p>
-                    <p><strong className="text-gray-600">Hasta:</strong> {moment(event.end).format('DD/MM/YYYY HH:mm')}</p>
-                    {event.notes && <p><strong className="text-gray-600">Notas:</strong> {event.notes}</p>}
-                    <div className="flex justify-end pt-4 space-x-3">
-                        <button onClick={() => handleDeleteEvent(event.id)} className="bg-red-500 text-white px-4 py-2 rounded-lg flex items-center hover:bg-red-600"><Trash2 size={16} className="mr-2"/>Eliminar</button>
-                        <button onClick={() => setModalState({ ...modalState, mode: 'edit' })} className="bg-indigo-500 text-white px-4 py-2 rounded-lg flex items-center hover:bg-indigo-600"><Edit size={16} className="mr-2"/>Editar</button>
+          </CardHeader>
+          <CardContent>
+            {/* Navegación del calendario */}
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={goToPreviousMonth}>
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button variant="outline" size="sm" onClick={goToToday}>
+                  Hoy
+                </Button>
+                <Button variant="outline" size="sm" onClick={goToNextMonth}>
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+              <h2 className="text-xl font-semibold">
+                {monthNames[selectedMonth]} {selectedYear}
+              </h2>
+              <div className="w-32"></div>
                     </div>
+
+            {/* Calendario */}
+            <div className="grid grid-cols-7 gap-1 mb-4">
+              {dayNames.map(day => (
+                <div key={day} className="p-2 text-center font-medium text-sm text-muted-foreground">
+                  {day}
                 </div>
-            );
-        }
-        return null;
-    };
+              ))}
+            </div>
+
+            <div className="grid grid-cols-7 gap-1">
+              {calendarDays.map((day, index) => {
+                const isCurrentMonth = day.getMonth() === selectedMonth;
+                const isToday = day.toDateString() === new Date().toDateString();
+                const dayEvents = getEventsForDay(day);
 
     return (
-        <div>
-            <div className="flex justify-between items-center mb-8">
-                <h1 className="text-3xl font-bold text-gray-800">Calendario de Mantenimiento</h1>
-                <button 
-                    onClick={handleSyncMaintenance}
-                    disabled={loading}
-                    className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-6 py-2 rounded-lg flex items-center gap-2 transition-colors"
-                >
-                    {loading ? (
-                        <>
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                            Sincronizando...
-                        </>
-                    ) : (
-                        <>
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                            </svg>
-                            Sincronizar Mantenciones
-                        </>
-                    )}
-                </button>
+                  <div
+                    key={index}
+                    className={`min-h-[100px] p-2 border rounded-lg ${
+                      isCurrentMonth ? 'bg-background' : 'bg-muted/30'
+                    } ${isToday ? 'ring-2 ring-primary' : ''}`}
+                  >
+                    <div className={`text-sm font-medium mb-1 ${
+                      isCurrentMonth ? 'text-foreground' : 'text-muted-foreground'
+                    } ${isToday ? 'text-primary' : ''}`}>
+                      {day.getDate()}
+                    </div>
+                    <div className="space-y-1">
+                      {dayEvents.slice(0, 2).map(event => (
+                        <div
+                          key={event.id}
+                          className="text-xs p-1 rounded bg-primary/10 text-primary truncate cursor-pointer hover:bg-primary/20"
+                          title={event.title}
+                        >
+                          {event.time} - {event.title}
+                        </div>
+                      ))}
+                      {dayEvents.length > 2 && (
+                        <div className="text-xs text-muted-foreground">
+                          +{dayEvents.length - 2} más
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-            <div className="bg-white p-6 rounded-xl shadow-md h-[75vh]">
-                <Calendar
-                    localizer={localizer}
-                    events={events}
-                    components={components}
-                    onSelectSlot={handleSelectSlot}
-                    onSelectEvent={handleSelectEvent}
-                    selectable
-                    defaultView={Views.MONTH}
-                    messages={messages}
-                    culture='es'
-                />
+          </CardContent>
+        </Card>
+
+        {/* Lista de eventos del mes */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Eventos de {monthNames[selectedMonth]}</CardTitle>
+            <CardDescription>
+              Lista detallada de actividades programadas
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {filteredEvents.map(event => (
+                <div key={event.id} className="border rounded-lg p-4 hover:bg-muted/50">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <h4 className="font-medium">{event.title}</h4>
+                        {getTypeBadge(event.type)}
+                        {getStatusBadge(event.status)}
+                        {getPriorityBadge(event.priority)}
+                      </div>
+                      <div className="text-sm text-muted-foreground space-y-1">
+                        <div className="flex items-center gap-2">
+                          <Clock className="h-3 w-3" />
+                          {event.date} a las {event.time}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Wrench className="h-3 w-3" />
+                          {event.equipment}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <CheckCircle className="h-3 w-3" />
+                          {event.technician}
+                        </div>
+                        {event.description && (
+                          <p className="text-xs mt-2">{event.description}</p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex gap-1 ml-4">
+                      <Button variant="outline" size="sm">
+                        <Eye className="h-3 w-3" />
+                      </Button>
+                      <Button variant="outline" size="sm">
+                        <Edit className="h-3 w-3" />
+                      </Button>
+                      <Button variant="outline" size="sm">
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              
+              {filteredEvents.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground">
+                  <CalendarIcon className="mx-auto h-12 w-12 text-muted-foreground/50" />
+                  <h3 className="mt-2 text-sm font-medium">No hay eventos</h3>
+                  <p className="mt-1 text-sm">No se encontraron eventos para los filtros seleccionados.</p>
+                </div>
+              )}
             </div>
-            <Modal 
-                isOpen={modalState.isOpen} 
-                onClose={() => setModalState({ isOpen: false, mode: null, data: null })} 
-                title={
-                    modalState.mode === 'create' ? 'Crear Nuevo Evento' :
-                    modalState.mode === 'edit' ? `Editar: ${modalState.data?.event?.title}` :
-                    modalState.data?.event?.title || 'Detalles del Evento'
-                }
-            >
-                {renderModalContent()}
-            </Modal>
-        </div>
+          </CardContent>
+        </Card>
+      </ContentGrid>
+
+      {/* Formulario de creación de evento/orden de trabajo */}
+      <CreateWorkOrderForm
+        isOpen={showCreateForm}
+        onClose={() => setShowCreateForm(false)}
+        onSuccess={() => {
+          console.log('Evento/Orden de trabajo creado exitosamente');
+        }}
+      />
+    </PageLayout>
     );
 };
 

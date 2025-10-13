@@ -1,123 +1,430 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { 
+  Settings, 
+  Plus, 
+  Search, 
+  Filter,
+  Wrench,
+  Clock,
+  Calendar,
+  CheckCircle,
+  AlertTriangle,
+  Edit,
+  Trash2,
+  Eye,
+  Save,
+  RefreshCw,
+  Bell,
+  FileText
+} from 'lucide-react';
+import { PageLayout, PageHeader, StatsGrid, ContentGrid } from '@/components/layout/PageLayout';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-// Este componente representa la página de Configuración de Mantenimiento.
-const MaintenanceConfigView = () => {
-    // Estado para manejar la máquina seleccionada en el dropdown
-    const [selectedMachine, setSelectedMachine] = useState('');
+// =================================================================================
+// TIPOS DE DATOS
+// =================================================================================
+
+interface MaintenanceConfig {
+  id: number;
+  equipmentName: string;
+  equipmentCode: string;
+  maintenanceType: 'preventivo' | 'correctivo' | 'predictivo';
+  frequency: string;
+  nextMaintenance: string;
+  isActive: boolean;
+  tasks: string[];
+  estimatedDuration: string;
+  assignedTechnician: string;
+  priority: 'baja' | 'media' | 'alta' | 'urgente';
+  createdAt: string;
+  lastUpdated: string;
+}
+
+interface ConfigStats {
+  totalConfigs: number;
+  activeConfigs: number;
+  preventiveConfigs: number;
+  nextMaintenances: number;
+}
+
+// =================================================================================
+// COMPONENTE PRINCIPAL
+// =================================================================================
+
+const MaintenanceConfigView: React.FC = () => {
+  const [configs, setConfigs] = useState<MaintenanceConfig[]>([]);
+  const [stats, setStats] = useState<ConfigStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [typeFilter, setTypeFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
+
+  // Datos de ejemplo para el diseño
+  const mockConfigs: MaintenanceConfig[] = [
+    {
+      id: 1,
+      equipmentName: 'Compresor de Aire Principal',
+      equipmentCode: 'EQ-001',
+      maintenanceType: 'preventivo',
+      frequency: 'Mensual',
+      nextMaintenance: '2024-11-15',
+      isActive: true,
+      tasks: ['Cambio de filtros', 'Lubricación', 'Inspección visual'],
+      estimatedDuration: '4 horas',
+      assignedTechnician: 'Juan Pérez',
+      priority: 'media',
+      createdAt: '2024-01-15',
+      lastUpdated: '2024-10-15'
+    },
+    {
+      id: 2,
+      equipmentName: 'Bomba Centrífuga B-205',
+      equipmentCode: 'EQ-002',
+      maintenanceType: 'preventivo',
+      frequency: 'Bimensual',
+      nextMaintenance: '2024-11-20',
+      isActive: true,
+      tasks: ['Revisión de rodamientos', 'Cambio de aceite', 'Prueba de funcionamiento'],
+      estimatedDuration: '3 horas',
+      assignedTechnician: 'María García',
+      priority: 'alta',
+      createdAt: '2024-02-20',
+      lastUpdated: '2024-10-14'
+    },
+    {
+      id: 3,
+      equipmentName: 'Motor Eléctrico C-310',
+      equipmentCode: 'EQ-003',
+      maintenanceType: 'predictivo',
+      frequency: 'Trimestral',
+      nextMaintenance: '2024-12-10',
+      isActive: true,
+      tasks: ['Análisis de vibraciones', 'Medición de temperatura', 'Inspección de conexiones'],
+      estimatedDuration: '2 horas',
+      assignedTechnician: 'Carlos López',
+      priority: 'baja',
+      createdAt: '2024-03-10',
+      lastUpdated: '2024-10-13'
+    },
+    {
+      id: 4,
+      equipmentName: 'Válvula de Control D-115',
+      equipmentCode: 'EQ-004',
+      maintenanceType: 'correctivo',
+      frequency: 'Según necesidad',
+      nextMaintenance: '2024-10-25',
+      isActive: false,
+      tasks: ['Reparación de actuador', 'Calibración', 'Prueba de sellado'],
+      estimatedDuration: '6 horas',
+      assignedTechnician: 'Ana Martínez',
+      priority: 'urgente',
+      createdAt: '2024-04-15',
+      lastUpdated: '2024-10-12'
+    }
+  ];
+
+  const mockStats: ConfigStats = {
+    totalConfigs: 24,
+    activeConfigs: 20,
+    preventiveConfigs: 18,
+    nextMaintenances: 8
+  };
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        // Usar datos mock por ahora
+        setConfigs(mockConfigs);
+        setStats(mockStats);
+        setError('');
+      } catch (err) {
+        console.error("Error fetching maintenance configs data:", err);
+        setError("No se pudo cargar la información de configuraciones.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  // Filtrar configuraciones
+  const filteredConfigs = configs.filter(config => {
+    const matchesSearch = config.equipmentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         config.equipmentCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         config.assignedTechnician.toLowerCase().includes(searchTerm.toLowerCase());
     
-    // Estado para manejar las tareas de mantenimiento seleccionadas
-    const [tasks, setTasks] = useState({
-        lubricacion: false,
-        comprobarNivel: false,
-        reemplazarFiltro: false,
-        inspeccionarCorrea: false
-    });
+    const matchesType = typeFilter === 'all' || config.maintenanceType === typeFilter;
+    const matchesStatus = statusFilter === 'all' || 
+                         (statusFilter === 'active' && config.isActive) ||
+                         (statusFilter === 'inactive' && !config.isActive);
     
-    // Estado para manejar las horas programadas
-    const [hours, setHours] = useState({
-        pm1: '',
-        pm2: '',
-        pm3: ''
-    });
+    return matchesSearch && matchesType && matchesStatus;
+  });
 
-    // Manejador para los checkboxes de tareas
-    const handleTaskChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, checked } = e.target;
-        setTasks(prev => ({ ...prev, [name]: checked }));
-    };
+  // Obtener badge de tipo de mantenimiento
+  const getMaintenanceTypeBadge = (type: string) => {
+    switch (type) {
+      case 'preventivo':
+        return <Badge variant="default" className="bg-blue-100 text-blue-800">Preventivo</Badge>;
+      case 'correctivo':
+        return <Badge variant="default" className="bg-orange-100 text-orange-800">Correctivo</Badge>;
+      case 'predictivo':
+        return <Badge variant="default" className="bg-green-100 text-green-800">Predictivo</Badge>;
+      default:
+        return <Badge variant="secondary">{type}</Badge>;
+    }
+  };
 
-    // Manejador para los inputs de horas
-    const handleHourChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, value } = e.target;
-        setHours(prev => ({ ...prev, [name]: value }));
-    };
+  // Obtener badge de prioridad
+  const getPriorityBadge = (priority: string) => {
+    switch (priority) {
+      case 'baja':
+        return <Badge variant="secondary">Baja</Badge>;
+      case 'media':
+        return <Badge variant="default" className="bg-blue-100 text-blue-800">Media</Badge>;
+      case 'alta':
+        return <Badge variant="default" className="bg-orange-100 text-orange-800">Alta</Badge>;
+      case 'urgente':
+        return <Badge variant="destructive">Urgente</Badge>;
+      default:
+        return <Badge variant="secondary">{priority}</Badge>;
+    }
+  };
 
-    // Función que se ejecuta al guardar la configuración
-    const handleSave = () => {
-        if (!selectedMachine) {
-            alert("Por favor, seleccione una máquina.");
-            return;
-        }
-        console.log("Guardando configuración...");
-        console.log("Máquina:", selectedMachine);
-        console.log("Tareas:", tasks);
-        console.log("Horas:", hours);
-        alert("Configuración guardada. Revisa la consola para ver los datos.");
-    };
+  // Obtener badge de estado
+  const getStatusBadge = (isActive: boolean) => {
+    return isActive ? (
+      <Badge variant="default" className="bg-green-100 text-green-800">
+        <CheckCircle className="h-3 w-3 mr-1" />Activo
+      </Badge>
+    ) : (
+      <Badge variant="destructive">
+        <AlertTriangle className="h-3 w-3 mr-1" />Inactivo
+      </Badge>
+    );
+  };
 
+  if (loading) {
     return (
-         <div>
-            <h1 className="text-3xl font-bold text-gray-800 mb-8">Configuración de Mantenimiento</h1>
-            <div className="bg-white p-8 rounded-xl shadow-md space-y-8">
-                {/* Selección de Máquina */}
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Seleccionar Máquina</label>
-                    <select 
-                        value={selectedMachine} 
-                        onChange={e => setSelectedMachine(e.target.value)} 
-                        className="w-full p-2 border border-gray-300 rounded-md shadow-sm"
-                    >
-                        <option value="">-- Seleccione una opción --</option>
-                        <option value="Cargador Frontal 966 GC">Cargador Frontal 966 GC</option>
-                        <option value="Retroexcavadora 3157TR">Retroexcavadora 3157TR</option>
-                        <option value="Camión Minero 797F">Camión Minero 797F</option>
-                    </select>
-                </div>
+      <PageLayout>
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+      </PageLayout>
+    );
+  }
 
-                {/* Tareas de Mantenimiento */}
-                <div>
-                    <h3 className="text-lg font-semibold text-gray-700 mb-4 border-b pb-2">Tareas de Mantenimiento</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
-                        <label className="flex items-center space-x-3">
-                            <input type="checkbox" name="lubricacion" checked={tasks.lubricacion} onChange={handleTaskChange} className="h-4 w-4 text-indigo-600 border-gray-300 rounded" />
-                            <span>Lubricación del cojinete de soporte</span>
-                        </label>
-                        <label className="flex items-center space-x-3">
-                            <input type="checkbox" name="comprobarNivel" checked={tasks.comprobarNivel} onChange={handleTaskChange} className="h-4 w-4 text-indigo-600 border-gray-300 rounded" />
-                            <span>Comprobar nivel de líquido del eje motriz</span>
-                        </label>
-                        <label className="flex items-center space-x-3">
-                            <input type="checkbox" name="reemplazarFiltro" checked={tasks.reemplazarFiltro} onChange={handleTaskChange} className="h-4 w-4 text-indigo-600 border-gray-300 rounded" />
-                            <span>Reemplazar filtro de aceite hidráulico</span>
-                        </label>
-                        <label className="flex items-center space-x-3">
-                            <input type="checkbox" name="inspeccionarCorrea" checked={tasks.inspeccionarCorrea} onChange={handleTaskChange} className="h-4 w-4 text-indigo-600 border-gray-300 rounded" />
-                            <span>Inspeccionar la correa serpentina</span>
-                        </label>
-                    </div>
+  if (error) {
+    return (
+      <PageLayout>
+        <div className="p-8 text-center text-destructive bg-destructive/10 rounded-lg">
+          {error}
+        </div>
+      </PageLayout>
+    );
+  }
+
+  return (
+    <PageLayout>
+      <PageHeader 
+        title="Configuración de Mantenimiento" 
+        subtitle="Gestión de planes y configuraciones de mantenimiento preventivo"
+      >
+        <Button>
+          <Plus className="h-4 w-4 mr-2" />
+          Nueva Configuración
+        </Button>
+      </PageHeader>
+
+      {/* Tarjetas de estadísticas */}
+      <StatsGrid>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Configuraciones</CardTitle>
+            <Settings className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats?.totalConfigs}</div>
+            <p className="text-xs text-muted-foreground">
+              Planes configurados
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Configuraciones Activas</CardTitle>
+            <CheckCircle className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">{stats?.activeConfigs}</div>
+            <p className="text-xs text-muted-foreground">
+              {stats ? Math.round((stats.activeConfigs / stats.totalConfigs) * 100) : 0}% del total
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Preventivos</CardTitle>
+            <Wrench className="h-4 w-4 text-blue-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-600">{stats?.preventiveConfigs}</div>
+            <p className="text-xs text-muted-foreground">
+              Mantenimientos preventivos
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Próximos Mantenimientos</CardTitle>
+            <Bell className="h-4 w-4 text-orange-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-orange-600">{stats?.nextMaintenances}</div>
+            <p className="text-xs text-muted-foreground">
+              Esta semana
+            </p>
+          </CardContent>
+        </Card>
+      </StatsGrid>
+
+      {/* Lista de configuraciones */}
+      <ContentGrid>
+        <Card>
+          <CardHeader>
+            <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center">
+              <div>
+                <CardTitle>Configuraciones de Mantenimiento</CardTitle>
+                <CardDescription>
+                  Planes y configuraciones de mantenimiento por equipo
+                </CardDescription>
+              </div>
+              
+              <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar configuración..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 w-full md:w-64"
+                  />
                 </div>
                 
-                 {/* Horas Programadas */}
-                 <div>
-                    <h3 className="text-lg font-semibold text-gray-700 mb-4 border-b pb-2">Horas Programadas</h3>
-                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div>
-                            <label className="block text-xs font-medium text-gray-600">PM1 (250 HRS)</label>
-                            <input type="number" placeholder="Horas" name="pm1" value={hours.pm1} onChange={handleHourChange} className="mt-1 w-full p-2 border border-gray-300 rounded-md shadow-sm"/>
-                        </div>
-                        <div>
-                            <label className="block text-xs font-medium text-gray-600">PM2 (500 HRS)</label>
-                            <input type="number" placeholder="Horas" name="pm2" value={hours.pm2} onChange={handleHourChange} className="mt-1 w-full p-2 border border-gray-300 rounded-md shadow-sm"/>
-                        </div>
-                         <div>
-                            <label className="block text-xs font-medium text-gray-600">PM3 (1000 HRS)</label>
-                            <input type="number" placeholder="Horas" name="pm3" value={hours.pm3} onChange={handleHourChange} className="mt-1 w-full p-2 border border-gray-300 rounded-md shadow-sm"/>
-                        </div>
-                     </div>
-                </div>
+                <Select value={typeFilter} onValueChange={setTypeFilter}>
+                  <SelectTrigger className="w-full md:w-48">
+                    <SelectValue placeholder="Tipo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos los tipos</SelectItem>
+                    <SelectItem value="preventivo">Preventivo</SelectItem>
+                    <SelectItem value="correctivo">Correctivo</SelectItem>
+                    <SelectItem value="predictivo">Predictivo</SelectItem>
+                  </SelectContent>
+                </Select>
 
-                {/* Botón de Guardar */}
-                <div className="flex justify-end pt-4">
-                    <button 
-                        onClick={handleSave} 
-                        className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 shadow-md transition-colors"
-                    >
-                        Guardar Configuración
-                    </button>
-                </div>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-full md:w-48">
+                    <SelectValue placeholder="Estado" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos los estados</SelectItem>
+                    <SelectItem value="active">Activos</SelectItem>
+                    <SelectItem value="inactive">Inactivos</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-        </div>
-    );
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {filteredConfigs.map(config => (
+                <div key={config.id} className="border rounded-lg p-4 hover:bg-muted/50">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <h4 className="font-medium">{config.equipmentName}</h4>
+                        <span className="text-sm text-muted-foreground">({config.equipmentCode})</span>
+                        {getStatusBadge(config.isActive)}
+                        {getMaintenanceTypeBadge(config.maintenanceType)}
+                        {getPriorityBadge(config.priority)}
+                      </div>
+                      
+                      <div className="text-sm text-muted-foreground space-y-1">
+                        <div className="flex items-center gap-2">
+                          <Calendar className="h-3 w-3" />
+                          Próximo mantenimiento: {config.nextMaintenance}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Clock className="h-3 w-3" />
+                          Frecuencia: {config.frequency}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Wrench className="h-3 w-3" />
+                          Duración estimada: {config.estimatedDuration}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <CheckCircle className="h-3 w-3" />
+                          Técnico asignado: {config.assignedTechnician}
+                        </div>
+                      </div>
+                      
+                      <div className="mt-3">
+                        <div className="flex items-center gap-2 mb-1">
+                          <FileText className="h-3 w-3 text-blue-600" />
+                          <span className="text-sm font-medium text-blue-600">Tareas:</span>
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {config.tasks.map((task, index) => (
+                            <Badge key={index} variant="outline" className="text-xs">
+                              {task}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex gap-1 ml-4">
+                      <Button variant="outline" size="sm">
+                        <Eye className="h-3 w-3" />
+                      </Button>
+                      <Button variant="outline" size="sm">
+                        <Edit className="h-3 w-3" />
+                      </Button>
+                      <Button variant="outline" size="sm">
+                        <RefreshCw className="h-3 w-3" />
+                      </Button>
+                      <Button variant="outline" size="sm">
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              
+              {filteredConfigs.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Settings className="mx-auto h-12 w-12 text-muted-foreground/50" />
+                  <h3 className="mt-2 text-sm font-medium">No se encontraron configuraciones</h3>
+                  <p className="mt-1 text-sm">No hay configuraciones que coincidan con los filtros seleccionados.</p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </ContentGrid>
+    </PageLayout>
+  );
 };
 
 export default MaintenanceConfigView;

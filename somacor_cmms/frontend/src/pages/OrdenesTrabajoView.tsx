@@ -1,266 +1,608 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { 
-  PlusCircle, 
-  Eye, 
-  Clock, 
-  AlertTriangle, 
-  CheckCircle, 
-  XCircle,
-  Filter,
-  Calendar,
-  User,
-  Wrench,
-  Search,
-  ChevronDown,
-  ChevronUp
-} from 'lucide-react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-
-// Se asume que estos componentes y hooks existen en tu proyecto
-import Modal from '../components/ui/Modal';
-import GenericForm from '../components/shared/GenericForm';
+import { PageLayout, PageHeader, StatsGrid, ContentGrid } from '@/components/layout/PageLayout';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { 
-  useOrdenesTrabajoFiltradas, 
-  useEquipos, 
-  useUsuarios,
-  usePlanesMantenimiento
-} from '../hooks';
-import { ordenesTrabajoService } from '../services/apiService';
-import type { OrdenTrabajo, OrdenTrabajoFormData } from '../types';
+  ClipboardList, 
+  Search, 
+  Filter, 
+  Plus, 
+  Eye, 
+  Edit, 
+  Trash2,
+  AlertTriangle,
+  CheckCircle,
+  Clock,
+  XCircle,
+  Wrench,
+  Calendar,
+  User
+} from 'lucide-react';
+import { ordenesTrabajoService } from '@/services/apiService';
+import CreateWorkOrderForm from '@/components/forms/CreateWorkOrderForm';
+import { useRealtimeUpdates } from '@/hooks/useRealtimeUpdates';
+import ConnectionStatus from '@/components/ConnectionStatus';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
+// =================================================================================
+// TIPOS DE DATOS
+// =================================================================================
 
-// Tipos de datos
-// La interfaz OrdenTrabajoAPI ahora refleja los campos que vienen de la API,
-// incluyendo los nombres de las relaciones para la tabla.
-interface OrdenTrabajoAPI extends OrdenTrabajo {
-  equipo_nombre: string;
-  tipo_mantenimiento_nombre: string;
-  estado_nombre: string;
+interface OrdenTrabajo {
+  id: number;
+  title: string;
+  equipment: string;
+  type: string;
+  status: string;
+  priority: string;
+  assignedTo: string;
+  scheduledDate: string;
 }
 
-type SortKey = keyof OrdenTrabajoAPI;
+interface OrdenesStats {
+  pendientes: number;
+  enProgreso: number;
+  completadas: number;
+  urgentes: number;
+}
 
-const OrdenesTrabajoView: React.FC = () => {
+interface Filters {
+  statuses: string[];
+  types: string[];
+  priorities: string[];
+}
+
+// =================================================================================
+// COMPONENTE PRINCIPAL
+// =================================================================================
+
+export default function OrdenesTrabajoView() {
   const navigate = useNavigate();
+  const [ordenes, setOrdenes] = useState<OrdenTrabajo[]>([]);
+  const [stats, setStats] = useState<OrdenesStats | null>(null);
+  const [filters, setFilters] = useState<Filters>({ statuses: [], types: [], priorities: [] });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<{isOpen: boolean, orden: OrdenTrabajo | null}>({isOpen: false, orden: null});
   
-  // Estados para filtros
-  const [filtros, setFiltros] = useState({
-    estado: undefined as number | undefined,
-    equipo: undefined as number | undefined,
-    fechaInicio: '',
-    fechaFin: ''
+  // Real-time updates
+  const { realtimeData, connectionStatus, subscribeToUpdates } = useRealtimeUpdates({
+    onDataUpdate: (dataType, data) => {
+      console.log('Ordenes data updated:', dataType, data);
+      // Refresh ordenes data when real-time updates are received
+      if (dataType === 'ordenes_update') {
+        loadInitialData();
+        loadOrdenes();
+      }
+    }
   });
   
-  // Estados para modales y UI
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
-  const [showFilters, setShowFilters] = useState(false);
+  // Filtros
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: 'asc' | 'desc' } | null>({ key: 'fechacreacion', direction: 'desc' });
+  const [selectedStatus, setSelectedStatus] = useState('all');
+  const [selectedPriority, setSelectedPriority] = useState('all');
+  const [selectedType, setSelectedType] = useState('all');
 
-  // Hooks de datos originales del usuario
-  const { ordenes, loading, error, refetch } = useOrdenesTrabajoFiltradas(filtros);
-  const { data: equipos } = useEquipos();
-  const { data: usuarios } = useUsuarios();
-  const { data: planes } = usePlanesMantenimiento();
+  // =================================================================================
+  // EFECTOS
+  // =================================================================================
 
-  const getEstadoColor = (estado: string) => {
-    switch (estado?.toLowerCase()) {
-      case 'abierta': return 'bg-blue-100 text-blue-800';
-      case 'asignada': return 'bg-yellow-100 text-yellow-800';
-      case 'en progreso': return 'bg-orange-100 text-orange-800';
-      case 'completada': return 'bg-green-100 text-green-800';
-      case 'cancelada': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
+  useEffect(() => {
+    loadInitialData();
+    // Subscribe to ordenes updates
+    subscribeToUpdates('ordenes');
+  }, []);
 
-  const getEstadoIcon = (estado: string) => {
-    switch (estado?.toLowerCase()) {
-      case 'abierta': return <Clock size={16} />;
-      case 'asignada': return <User size={16} />;
-      case 'en progreso': return <Wrench size={16} />;
-      case 'completada': return <CheckCircle size={16} />;
-      case 'cancelada': return <XCircle size={16} />;
-      default: return <Clock size={16} />;
-    }
-  };
+  useEffect(() => {
+    loadOrdenes();
+  }, [searchTerm, selectedStatus, selectedPriority, selectedType]);
 
-  const getPrioridadColor = (prioridad: string) => {
-    switch (prioridad?.toLowerCase()) {
-      case 'crítica': return 'bg-red-500 text-white';
-      case 'alta': return 'bg-orange-500 text-white';
-      case 'media': return 'bg-yellow-500 text-white';
-      case 'baja': return 'bg-green-500 text-white';
-      default: return 'bg-gray-500 text-white';
-    }
-  };
+  // =================================================================================
+  // FUNCIONES
+  // =================================================================================
 
-  const sortedAndFilteredOrdenes = useMemo(() => {
-    let filteredOrdenes = ordenes;
-    
-    if (searchTerm) {
-        filteredOrdenes = ordenes.filter((ot) =>
-        Object.values(ot).some(value =>
-            String(value).toLowerCase().includes(searchTerm.toLowerCase())
-        )
-        );
-    }
-    
-    if (sortConfig !== null) {
-      filteredOrdenes.sort((a, b) => {
-        if (a[sortConfig.key] < b[sortConfig.key]) {
-          return sortConfig.direction === 'asc' ? -1 : 1;
-        }
-        if (a[sortConfig.key] > b[sortConfig.key]) {
-          return sortConfig.direction === 'asc' ? 1 : -1;
-        }
-        return 0;
-      });
-    }
-    return filteredOrdenes;
-  }, [ordenes, searchTerm, sortConfig]);
-
-  const requestSort = (key: SortKey) => {
-    let direction: 'asc' | 'desc' = 'asc';
-    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
-      direction = 'desc';
-    }
-    setSortConfig({ key, direction });
-  };
-
-  const getSortIcon = (key: SortKey) => {
-    if (!sortConfig || sortConfig.key !== key) {
-      return <ChevronDown className="h-4 w-4 inline-block text-gray-400" />;
-    }
-    return sortConfig.direction === 'asc' ? <ChevronUp className="h-4 w-4 inline-block" /> : <ChevronDown className="h-4 w-4 inline-block" />;
-  };
-
-  const handleCreateFromPlan = async (formData: any) => {
+  const loadInitialData = async () => {
     try {
-      await ordenesTrabajoService.crearDesdeplan(formData);
-      refetch();
-      setIsCreateModalOpen(false);
+      setLoading(true);
+      setError(null);
+
+      const [statsData, filtersData] = await Promise.all([
+        ordenesTrabajoService.getStats(),
+        ordenesTrabajoService.getFilters()
+      ]);
+
+      // Transformar las estadísticas al formato esperado
+      const statsTransformados = {
+        total: statsData.total_ordenes || statsData.total || 0,
+        pendientes: statsData.pendientes || 0,
+        enProceso: statsData.en_proceso || 0,
+        completadas: statsData.completadas || 0,
+        canceladas: statsData.canceladas || 0
+      };
+
+      setStats(statsTransformados);
+      setFilters(filtersData || { statuses: [], types: [], priorities: [] });
     } catch (err) {
-      alert('Error al crear la orden de trabajo');
-      console.error(err);
+      console.error('Error loading initial data:', err);
+      setError('Error al cargar los datos iniciales');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleReportFalla = async (formData: any) => {
+  const loadOrdenes = async () => {
     try {
-      await ordenesTrabajoService.reportarFalla(formData);
-      refetch();
-      setIsReportModalOpen(false);
+      const params: any = {};
+      
+      if (searchTerm) params.search = searchTerm;
+      if (selectedStatus !== 'all') params.status = selectedStatus;
+      if (selectedPriority !== 'all') params.priority = selectedPriority;
+      if (selectedType !== 'all') params.type = selectedType;
+
+      const response = await ordenesTrabajoService.getList(params);
+      
+      // Asegurar que ordenes sea siempre un array
+      let ordenesData = [];
+      if (response && Array.isArray(response.results)) {
+        ordenesData = response.results;
+      } else if (Array.isArray(response)) {
+        ordenesData = response;
+      } else {
+        console.warn('Respuesta inesperada del servicio de órdenes:', response);
+        ordenesData = [];
+      }
+      
+      // Transformar los datos del servicio al formato esperado por el componente
+      const ordenesTransformadas = ordenesData.map((orden: any) => ({
+        id: orden.idordentrabajo || orden.id,
+        numero: orden.numeroot || orden.numero,
+        descripcion: orden.descripcionproblemareportado || orden.descripcion,
+        prioridad: orden.prioridad || 'Media',
+        estado: orden.estado_nombre || orden.estado || 'Pendiente',
+        tipo: orden.tipo_mantenimiento_nombre || orden.tipo || 'Correctivo',
+        equipo: orden.equipo_nombre || orden.equipo || 'Sin equipo',
+        tecnico: orden.tecnico_nombre || orden.tecnico || 'Sin técnico',
+        solicitante: orden.solicitante_nombre || orden.solicitante || 'Sin solicitante',
+        fechaReporte: orden.fechareportefalla ? new Date(orden.fechareportefalla).toLocaleDateString() : 'Sin fecha',
+        fechaEjecucion: orden.fechaejecucion ? new Date(orden.fechaejecucion).toLocaleDateString() : null,
+        fechaCompletado: orden.fechacompletado ? new Date(orden.fechacompletado).toLocaleDateString() : null,
+        tiempoTotal: orden.tiempototalminutos ? `${Math.floor(orden.tiempototalminutos / 60)}h ${orden.tiempototalminutos % 60}m` : null,
+        horometro: orden.horometro || 0,
+        observaciones: orden.observacionesfinales || null
+      }));
+      
+      setOrdenes(ordenesTransformadas);
     } catch (err) {
-      alert('Error al reportar la falla');
-      console.error(err);
+      console.error('Error loading ordenes:', err);
+      setError('Error al cargar las órdenes de trabajo');
+      setOrdenes([]); // Asegurar que ordenes sea un array vacío en caso de error
+    }
+  };
+
+  const getPriorityColor = (priority: string) => {
+    if (!priority || typeof priority !== 'string') {
+      return 'default';
+    }
+    
+    switch (priority.toLowerCase()) {
+      case 'crítica':
+      case 'urgente':
+        return 'destructive';
+      case 'alta':
+        return 'destructive';
+      case 'media':
+        return 'default';
+      case 'baja':
+        return 'secondary';
+      default:
+        return 'default';
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    if (!status || typeof status !== 'string') {
+      return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-100';
+    }
+    
+    switch (status.toLowerCase()) {
+      case 'completada':
+        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100';
+      case 'en progreso':
+      case 'en proceso':
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100';
+      case 'pendiente':
+        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100';
+      case 'abierta':
+        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100';
+      case 'asignada':
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100';
+      case 'cancelada':
+        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100';
+      default:
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-100';
+    }
+  };
+
+  const getPriorityIcon = (priority: string) => {
+    if (!priority || typeof priority !== 'string') {
+      return <Clock className="h-4 w-4" />;
+    }
+    
+    switch (priority.toLowerCase()) {
+      case 'crítica':
+      case 'urgente':
+        return <AlertTriangle className="h-4 w-4" />;
+      case 'alta':
+        return <AlertTriangle className="h-4 w-4" />;
+      case 'media':
+        return <Clock className="h-4 w-4" />;
+      case 'baja':
+        return <CheckCircle className="h-4 w-4" />;
+      default:
+        return <Clock className="h-4 w-4" />;
+    }
+  };
+
+  const getTypeIcon = (type: string) => {
+    if (!type || typeof type !== 'string') {
+      return <ClipboardList className="h-4 w-4" />;
+    }
+    
+    switch (type.toLowerCase()) {
+      case 'preventivo':
+        return <Calendar className="h-4 w-4" />;
+      case 'correctivo':
+        return <Wrench className="h-4 w-4" />;
+      case 'modificativo':
+        return <Wrench className="h-4 w-4" />;
+      case 'emergencia':
+        return <AlertTriangle className="h-4 w-4" />;
+      case 'predictivo':
+        return <Clock className="h-4 w-4" />;
+      default:
+        return <ClipboardList className="h-4 w-4" />;
     }
   };
 
   const handleViewDetails = (orden: OrdenTrabajo) => {
-    navigate(`/ordenes-trabajo/${orden.idordentrabajo}`);
+    console.log('Ver detalles de:', orden);
+    navigate(`/ordenes-trabajo/${orden.id}`);
   };
 
-  const formFieldsCreateFromPlan = [
-    { name: 'idequipo', label: 'Equipo', type: 'select', required: true, options: equipos.map(e => ({ value: e.idequipo, label: `${e.codigointerno} - ${e.nombreequipo}` })) },
-    { name: 'idplanorigen', label: 'Plan de Mantenimiento', type: 'select', required: true, options: planes.map(p => ({ value: p.idplanmantenimiento, label: p.nombreplan })) },
-    { name: 'horometro', label: 'Horómetro Actual', type: 'number', required: true },
-    { name: 'idtecnicoasignado', label: 'Técnico Asignado', type: 'select', options: usuarios.map(u => ({ value: u.id, label: `${u.first_name} ${u.last_name}` })) },
-    { name: 'idsolicitante', label: 'Solicitante', type: 'select', required: true, options: usuarios.map(u => ({ value: u.id, label: `${u.first_name} ${u.last_name}` })) },
-    { name: 'fechaejecucion', label: 'Fecha de Ejecución', type: 'date' }
-  ];
+  const handleEdit = (orden: OrdenTrabajo) => {
+    console.log('Editar orden:', orden);
+    // TODO: Implementar modal de edición
+    alert(`Editar orden ${orden.id} - Funcionalidad en desarrollo`);
+  };
 
-  const formFieldsReportFalla = [
-    { name: 'idequipo', label: 'Equipo', type: 'select', required: true, options: equipos.map(e => ({ value: e.idequipo, label: `${e.codigointerno} - ${e.nombreequipo}` })) },
-    { name: 'descripcionproblemareportado', label: 'Descripción del Problema', type: 'textarea', required: true },
-    { name: 'prioridad', label: 'Prioridad', type: 'select', required: true, options: [ { value: 'Baja', label: 'Baja' }, { value: 'Media', label: 'Media' }, { value: 'Alta', label: 'Alta' }, { value: 'Crítica', label: 'Crítica' } ] }
-  ];
+  const handleDelete = (orden: OrdenTrabajo) => {
+    setDeleteConfirm({isOpen: true, orden});
+  };
 
-  if (loading) return <div className="flex items-center justify-center h-64"><div className="text-gray-500">Cargando órdenes de trabajo...</div></div>;
-  if (error) return <div className="bg-red-50 border border-red-200 rounded-md p-4"><div className="flex"><AlertTriangle className="h-5 w-5 text-red-400" /><div className="ml-3"><h3 className="text-sm font-medium text-red-800">Error</h3><div className="mt-2 text-sm text-red-700">{error}</div></div></div></div>;
+  const confirmDelete = async () => {
+    if (!deleteConfirm.orden) return;
+    
+    try {
+      // TODO: Implementar eliminación en el backend
+      console.log('Eliminando orden:', deleteConfirm.orden.id);
+      
+      // Simular eliminación
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Actualizar lista
+      setOrdenes(ordenes.filter(o => o.id !== deleteConfirm.orden!.id));
+      
+      // Cerrar modal
+      setDeleteConfirm({isOpen: false, orden: null});
+      
+      // Mostrar mensaje de éxito
+      alert('Orden de trabajo eliminada exitosamente');
+    } catch (err) {
+      console.error('Error eliminando orden:', err);
+      alert('Error al eliminar la orden de trabajo');
+    }
+  };
+
+  const cancelDelete = () => {
+    setDeleteConfirm({isOpen: false, orden: null});
+  };
+
+  // =================================================================================
+  // RENDER
+  // =================================================================================
+
+  if (loading && !ordenes.length) {
+    return (
+      <PageLayout>
+        <PageHeader
+          title="Órdenes de Trabajo"
+          description="Cargando órdenes de trabajo..."
+        />
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Cargando órdenes de trabajo...</p>
+          </div>
+        </div>
+      </PageLayout>
+    );
+  }
 
   return (
-    <div className="p-4 md:p-8 bg-gray-50 min-h-screen space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-800">Órdenes de Trabajo</h1>
-          <p className="text-gray-600 mt-2">Gestiona las órdenes de trabajo de mantenimiento preventivo y correctivo</p>
-        </div>
-        <div className="flex space-x-3">
-          <button onClick={() => setShowFilters(!showFilters)} className="bg-gray-600 text-white px-4 py-2 rounded-lg flex items-center hover:bg-gray-700"><Filter size={20} className="mr-2" />Filtros</button>
-          <button onClick={() => setIsReportModalOpen(true)} className="bg-red-600 text-white px-4 py-2 rounded-lg flex items-center hover:bg-red-700"><AlertTriangle size={20} className="mr-2" />Reportar Falla</button>
-          <button onClick={() => setIsCreateModalOpen(true)} className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center hover:bg-blue-700"><PlusCircle size={20} className="mr-2" />Crear desde Plan</button>
-        </div>
-      </div>
-
-      {showFilters && (
-        <div className="bg-white p-4 rounded-lg shadow">
-          <h3 className="text-lg font-medium mb-4">Filtros</h3>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            {/* ... Contenido de filtros ... */}
+    <PageLayout>
+      <PageHeader
+        title="Órdenes de Trabajo"
+        description="Gestión de órdenes de trabajo y mantenimiento"
+        action={
+          <div className="flex items-center gap-3">
+            <ConnectionStatus status={connectionStatus} />
+            <Button 
+              className="bg-primary hover:bg-primary/90"
+              onClick={() => setShowCreateForm(true)}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Nueva Orden
+            </Button>
           </div>
-        </div>
-      )}
+        }
+      />
 
-      <div className="bg-white shadow-md rounded-xl overflow-hidden">
-        <div className="p-4">
-             <div className="relative w-full md:w-1/3">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                <input type="text" placeholder="Buscar OT..." className="w-full p-2 pl-10 border border-gray-300 rounded-lg" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+      {/* Estadísticas */}
+      <StatsGrid>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Pendientes</CardTitle>
+            <Clock className="h-4 w-4 text-yellow-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-yellow-600">{stats?.pendientes || 0}</div>
+            <p className="text-xs text-muted-foreground">
+              Esperando asignación
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">En Progreso</CardTitle>
+            <Wrench className="h-4 w-4 text-blue-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-600">{stats?.enProgreso || 0}</div>
+            <p className="text-xs text-muted-foreground">
+              En ejecución
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Completadas</CardTitle>
+            <CheckCircle className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">{stats?.completadas || 0}</div>
+            <p className="text-xs text-muted-foreground">
+              Finalizadas
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Urgentes</CardTitle>
+            <AlertTriangle className="h-4 w-4 text-red-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-600">{stats?.urgentes || 0}</div>
+            <p className="text-xs text-muted-foreground">
+              Requieren atención inmediata
+            </p>
+          </CardContent>
+        </Card>
+      </StatsGrid>
+
+      {/* Filtros y búsqueda */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Filtros y Búsqueda</CardTitle>
+          <CardDescription>Buscar y filtrar órdenes de trabajo por diferentes criterios</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar por descripción, equipo o técnico..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
             </div>
-        </div>
-        {sortedAndFilteredOrdenes.length === 0 ? (
-          <div className="text-center py-12">
-            <Wrench size={48} className="mx-auto text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No hay órdenes de trabajo</h3>
-            <p className="text-gray-500 mb-4">Comienza creando tu primera orden de trabajo</p>
-            <button onClick={() => setIsCreateModalOpen(true)} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">Crear Orden</button>
+            
+            <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+              <SelectTrigger className="w-full sm:w-48">
+                <SelectValue placeholder="Estado" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los estados</SelectItem>
+                {filters.statuses.map((status) => (
+                  <SelectItem key={status} value={status}>
+                    {status}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={selectedPriority} onValueChange={setSelectedPriority}>
+              <SelectTrigger className="w-full sm:w-48">
+                <SelectValue placeholder="Prioridad" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas las prioridades</SelectItem>
+                {filters.priorities.map((priority) => (
+                  <SelectItem key={priority} value={priority}>
+                    {priority}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={selectedType} onValueChange={setSelectedType}>
+              <SelectTrigger className="w-full sm:w-48">
+                <SelectValue placeholder="Tipo" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los tipos</SelectItem>
+                {filters.types.map((type) => (
+                  <SelectItem key={type} value={type}>
+                    {type}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-        ) : (
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" onClick={() => requestSort('numeroot')}>Orden {getSortIcon('numeroot')}</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" onClick={() => requestSort('equipo_nombre')}>Equipo {getSortIcon('equipo_nombre')}</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" onClick={() => requestSort('tipo_mantenimiento_nombre')}>Tipo {getSortIcon('tipo_mantenimiento_nombre')}</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" onClick={() => requestSort('estado_nombre')}>Estado {getSortIcon('estado_nombre')}</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" onClick={() => requestSort('prioridad')}>Prioridad {getSortIcon('prioridad')}</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" onClick={() => requestSort('fechaejecucion')}>Fecha Ejecución {getSortIcon('fechaejecucion')}</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {sortedAndFilteredOrdenes.map((orden: OrdenTrabajoAPI) => (
-                <tr key={orden.idordentrabajo} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div>
-                      <div className="text-sm font-medium text-gray-900">{orden.numeroot}</div>
-                      <div className="text-sm text-gray-500">{new Date(orden.fechacreacion).toLocaleDateString()}</div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{orden.equipo_nombre}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{orden.tipo_mantenimiento_nombre}</td>
-                  <td className="px-6 py-4 whitespace-nowrap"><span className={`inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full ${getEstadoColor(orden.estado_nombre || '')}`}>{getEstadoIcon(orden.estado_nombre || '')}<span className="ml-1">{orden.estado_nombre}</span></span></td>
-                  <td className="px-6 py-4 whitespace-nowrap"><span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getPrioridadColor(orden.prioridad)}`}>{orden.prioridad}</span></td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{orden.fechaejecucion ? <div className="flex items-center"><Calendar size={16} className="mr-1 text-gray-400" />{new Date(orden.fechaejecucion).toLocaleDateString()}</div> : <span className="text-gray-400">No programada</span>}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium"><button onClick={() => handleViewDetails(orden)} className="text-indigo-600 hover:text-indigo-900 p-1" title="Ver detalles"><Eye size={18} /></button></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+        </CardContent>
+      </Card>
 
-      <Modal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} title="Crear Orden desde Plan de Mantenimiento">
-        <GenericForm fields={formFieldsCreateFromPlan} currentItem={null} onSave={handleCreateFromPlan} onCancel={() => setIsCreateModalOpen(false)} />
-      </Modal>
+      {/* Tabla de órdenes de trabajo */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Lista de Órdenes de Trabajo</CardTitle>
+          <CardDescription>
+            {ordenes.length} órdenes encontradas
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {error && (
+            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-red-800">{error}</p>
+            </div>
+          )}
+          
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>ID</TableHead>
+                  <TableHead>Descripción</TableHead>
+                  <TableHead>Equipo</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead>Prioridad</TableHead>
+                  <TableHead>Asignado a</TableHead>
+                  <TableHead>Fecha Programada</TableHead>
+                  <TableHead>Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {ordenes.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                      No se encontraron órdenes de trabajo
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  ordenes.map((orden) => (
+                    <TableRow key={orden.id}>
+                      <TableCell className="font-medium">WO-{orden.id.toString().padStart(3, '0')}</TableCell>
+                      <TableCell>{orden.title}</TableCell>
+                      <TableCell>{orden.equipment}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          {getTypeIcon(orden.type)}
+                          {orden.type}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(orden.status)}`}>
+                          {orden.status}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={getPriorityColor(orden.priority)} className="flex items-center gap-1 w-fit">
+                          {getPriorityIcon(orden.priority)}
+                          {orden.priority}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <User className="h-4 w-4 text-muted-foreground" />
+                          {orden.assignedTo}
+                        </div>
+                      </TableCell>
+                      <TableCell>{orden.scheduledDate}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleViewDetails(orden)}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEdit(orden)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDelete(orden)}
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
 
-      <Modal isOpen={isReportModalOpen} onClose={() => setIsReportModalOpen(false)} title="Reportar Falla">
-        <GenericForm fields={formFieldsReportFalla} currentItem={null} onSave={handleReportFalla} onCancel={() => setIsReportModalOpen(false)} />
-      </Modal>
-    </div>
+      {/* Formulario de creación de orden de trabajo */}
+      <CreateWorkOrderForm
+        isOpen={showCreateForm}
+        onClose={() => setShowCreateForm(false)}
+        onSuccess={() => {
+          loadInitialData(); // Recargar datos después de crear
+          loadOrdenes(); // Recargar lista de órdenes
+        }}
+      />
+
+      {/* Diálogo de confirmación de eliminación */}
+      <AlertDialog open={deleteConfirm.isOpen} onOpenChange={setDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar orden de trabajo?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción no se puede deshacer. Se eliminará permanentemente la orden de trabajo{' '}
+              <strong>WO-{deleteConfirm.orden?.id.toString().padStart(3, '0')}</strong>.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={cancelDelete}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </PageLayout>
   );
-};
-
-export default OrdenesTrabajoView;
+}

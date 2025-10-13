@@ -22,9 +22,29 @@ from django.conf import settings
 from django.conf.urls.static import static
 # --- FIN DE LA MODIFICACIÓN ---
 
+from django.http import HttpResponse, JsonResponse
+
+def test_api(request):
+    return HttpResponse("API funcionando correctamente")
+
+def websocket_fallback(request, endpoint):
+    """Fallback para endpoints de WebSocket que no están disponibles"""
+    return JsonResponse({
+        'message': f'WebSocket endpoint /ws/{endpoint}/ no disponible',
+        'status': 'fallback_mode',
+        'note': 'La aplicación funciona sin WebSockets'
+    })
+
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/', include('cmms_api.urls')),  # Asegúrate que esta línea exista
+    path('api/test/', test_api, name='test_api'),
+    path('api/', include('cmms_api.urls')),  # APIs principales con V2
+    
+    # Fallbacks para WebSockets (evitar errores 404)
+    path('ws/notifications/', websocket_fallback, {'endpoint': 'notifications'}, name='ws_notifications_fallback'),
+    path('ws/dashboard/', websocket_fallback, {'endpoint': 'dashboard'}, name='ws_dashboard_fallback'),
+    path('ws/equipos/', websocket_fallback, {'endpoint': 'equipos'}, name='ws_equipos_fallback'),
+    path('ws/ordenes/', websocket_fallback, {'endpoint': 'ordenes'}, name='ws_ordenes_fallback'),
 ]
 
 # --- INICIO DE LA MODIFICACIÓN ---

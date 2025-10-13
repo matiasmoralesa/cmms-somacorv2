@@ -40,12 +40,17 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'rest_framework.authtoken',
+    'django_filters',
     'corsheaders',
+    'channels',
     'cmms_api',
 ]
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
+    # 'cmms_api.core.middleware.RequestLoggingMiddleware',  # Temporalmente deshabilitado por problemas
+    # 'cmms_api.core.middleware.RateLimitMiddleware',       # Temporalmente deshabilitado
+    # 'cmms_api.core.middleware.BotIntegrationMiddleware',  # Temporalmente deshabilitado
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -73,6 +78,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'cmms_project.wsgi.application'
+ASGI_APPLICATION = 'cmms_project.asgi.application'
 
 
 # Database
@@ -155,13 +161,15 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# CORS settings
+# CORS settings optimizadas
 CORS_ALLOW_ALL_ORIGINS = True  # Solo para desarrollo
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://localhost:5173",
     "http://127.0.0.1:3000",
     "http://127.0.0.1:5173",
+    "http://localhost:8080",  # Puerto alternativo
+    "http://127.0.0.1:8080",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
@@ -177,6 +185,8 @@ CORS_ALLOW_HEADERS = [
     'user-agent',
     'x-csrftoken',
     'x-requested-with',
+    'cache-control',
+    'pragma',
 ]
 
 CORS_ALLOW_METHODS = [
@@ -186,21 +196,29 @@ CORS_ALLOW_METHODS = [
     'PATCH',
     'POST',
     'PUT',
+    'HEAD',
 ]
 
 CORS_PREFLIGHT_MAX_AGE = 86400
 
-# REST Framework settings
+# Configuraciones adicionales para mejorar rendimiento
+CORS_ALLOW_PRIVATE_NETWORK = True
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^http://localhost:\d+$",
+    r"^http://127\.0\.0\.1:\d+$",
+]
+
+# REST Framework settings optimizadas
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.TokenAuthentication',
         'rest_framework.authentication.SessionAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticated',
+        'rest_framework.permissions.AllowAny',  # Cambiado a AllowAny para desarrollo
     ],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 50,
+    'PAGE_SIZE': 100,  # Aumentar tamaño de página para mejor rendimiento
     'DEFAULT_RENDERER_CLASSES': [
         'rest_framework.renderers.JSONRenderer',
     ],
@@ -209,6 +227,17 @@ REST_FRAMEWORK = {
         'rest_framework.parsers.FormParser',
         'rest_framework.parsers.MultiPartParser',
     ],
+    # Configuraciones de rendimiento
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle'
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '1000/hour',  # Límite para usuarios anónimos
+        'user': '2000/hour'   # Límite para usuarios autenticados
+    },
+    # Configuración de caché para respuestas
+    'DEFAULT_CACHE_RESPONSE_TIMEOUT': 300,  # 5 minutos
 }
 
 # Logging configuration
@@ -258,3 +287,80 @@ LOGGING = {
 
 # Crear directorio de logs si no existe
 os.makedirs(os.path.join(BASE_DIR, 'logs'), exist_ok=True)
+
+# CMMS API Configuration
+CMMS_API = {
+    'VERSION': '1.0.0',
+    'DEFAULT_PAGE_SIZE': 50,
+    'MAX_PAGE_SIZE': 1000,
+    'BOT_INTEGRATION_ENABLED': True,
+    'WEBHOOK_TIMEOUT': 30,  # seconds
+    'RATE_LIMIT_PER_MINUTE': 100,
+}
+
+# Bot Integration Configuration
+BOT_CONFIG = {
+    'ENABLED': True,
+    'WEBHOOK_URL': os.environ.get('BOT_WEBHOOK_URL', 'http://localhost:5000/webhook'),
+    'API_TIMEOUT': 30,
+    'RETRY_ATTEMPTS': 3,
+    'VALID_BOT_TOKENS': [
+        'bot_development_token',
+        'bot_production_token',
+    ],
+}
+
+# Cache Configuration (for future implementation)
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'unique-snowflake',
+        'TIMEOUT': 300,  # 5 minutes
+        'OPTIONS': {
+            'MAX_ENTRIES': 1000,
+        }
+    }
+}
+
+# Custom Exception Handler
+REST_FRAMEWORK['EXCEPTION_HANDLER'] = 'cmms_api.core.exceptions.custom_exception_handler'
+
+# API Documentation
+SWAGGER_SETTINGS = {
+    'SECURITY_DEFINITIONS': {
+        'Token': {
+            'type': 'apiKey',
+            'name': 'Authorization',
+            'in': 'header',
+            'description': 'Token authentication. Format: Token <your_token>'
+        }
+    },
+    'USE_SESSION_AUTH': False,
+    'JSON_EDITOR': True,
+    'SUPPORTED_SUBMIT_METHODS': [
+        'get',
+        'post',
+        'put',
+        'delete',
+        'patch'
+    ],
+    'OPERATIONS_SORTER': 'alpha',
+    'TAGS_SORTER': 'alpha',
+    'DOC_EXPANSION': 'list',
+    'DEEP_LINKING': True,
+    'SHOW_EXTENSIONS': True,
+    'SHOW_COMMON_EXTENSIONS': True,
+}
+
+# Channels Configuration
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            "hosts": [('127.0.0.1', 6379)],
+        },
+    },
+}
+
+# WebSocket Configuration
+WEBSOCKET_URL = '/ws/'

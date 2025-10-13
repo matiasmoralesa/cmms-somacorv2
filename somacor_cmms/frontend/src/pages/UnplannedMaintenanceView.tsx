@@ -1,416 +1,437 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { AlertTriangle, CheckCircle, Send } from 'lucide-react';
-import MultipleImageUpload from '../components/MultipleImageUpload';
-import { equiposService, ordenesTrabajoService } from '../services/apiService';
-import apiClient from '../api/apiClient';
+import React, { useState, useEffect } from 'react';
+import { 
+  AlertTriangle, 
+  CheckCircle, 
+  Send, 
+  Plus,
+  Clock,
+  Wrench,
+  FileText,
+  Camera,
+  User,
+  Calendar,
+  Search,
+  Filter
+} from 'lucide-react';
+import { PageLayout, PageHeader, StatsGrid, ContentGrid } from '@/components/layout/PageLayout';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import CreateUnplannedMaintenanceForm from '@/components/forms/CreateUnplannedMaintenanceForm';
 
 // =================================================================================
-// INICIO DE DEPENDENCIAS LOCALES
+// TIPOS DE DATOS
 // =================================================================================
 
-const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ className, ...props }, ref) => (
-  <div ref={ref} className={`rounded-lg border bg-white text-gray-900 shadow-sm ${className}`} {...props} />
-));
-Card.displayName = 'Card';
-
-const CardHeader = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ className, ...props }, ref) => (
-  <div ref={ref} className={`flex flex-col space-y-1.5 p-6 ${className}`} {...props} />
-));
-CardHeader.displayName = 'CardHeader';
-
-const CardTitle = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLHeadingElement>>(({ className, ...props }, ref) => (
-  <h3 ref={ref} className={`text-2xl font-semibold leading-none tracking-tight ${className}`} {...props} />
-));
-CardTitle.displayName = 'CardTitle';
-
-const CardContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ className, ...props }, ref) => (
-  <div ref={ref} className={`p-6 pt-0 ${className}`} {...props} />
-));
-CardContent.displayName = 'CardContent';
-
-const CardFooter = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ className, ...props }, ref) => (
-  <div ref={ref} className={`flex items-center p-6 pt-0 ${className}`} {...props} />
-));
-CardFooter.displayName = 'CardFooter';
-
-// =================================================================================
-// FIN DE DEPENDENCIAS LOCALES
-// =================================================================================
-
-interface Equipo {
-  idequipo: number;
-  nombreequipo: string;
-  codigointerno: string;
-  patente?: string;
-}
-
-interface ImageData {
+interface UnplannedMaintenance {
   id: string;
-  descripcion: string;
-  imagen_base64: string;
-  preview?: string;
+  title: string;
+  equipment: string;
+  equipmentCode: string;
+  reportedBy: string;
+  reportedDate: string;
+  priority: 'baja' | 'media' | 'alta' | 'urgente';
+  status: 'reportado' | 'en_revision' | 'asignado' | 'en_progreso' | 'completado' | 'cancelado';
+  description: string;
+  location: string;
+  estimatedTime?: string;
+  assignedTo?: string;
+  images?: string[];
 }
 
-interface FormData {
-  idequipo: string;
-  prioridad: 'Baja' | 'Media' | 'Alta' | 'Crítica';
-  descripcionproblemareportado: string;
-  horometro: string;
-  observacionesadicionales: string;
+interface MaintenanceStats {
+  totalReportes: number;
+  pendientes: number;
+  enProgreso: number;
+  completados: number;
+  urgentes: number;
 }
+
+// =================================================================================
+// COMPONENTE PRINCIPAL
+// =================================================================================
 
 const UnplannedMaintenanceView: React.FC = () => {
-    // Estados para los datos de los dropdowns
-    const [equipos, setEquipos] = useState<Equipo[]>([]);
-    const [images, setImages] = useState<ImageData[]>([]);
-    
-    // Estado principal del formulario
-    const [formData, setFormData] = useState<FormData>({
-        idequipo: '',
-        prioridad: 'Alta', // Valor por defecto para emergencias
-        descripcionproblemareportado: '',
-        horometro: '',
-        observacionesadicionales: '',
-    });
+  const [maintenances, setMaintenances] = useState<UnplannedMaintenance[]>([]);
+  const [stats, setStats] = useState<MaintenanceStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [priorityFilter, setPriorityFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [showNewForm, setShowNewForm] = useState(false);
 
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
-    const [success, setSuccess] = useState('');
+  // Datos de ejemplo para el diseño
+  const mockMaintenances: UnplannedMaintenance[] = [
+    {
+      id: '1',
+      title: 'Falla en Sistema de Refrigeración',
+      equipment: 'Compresor de Aire Principal',
+      equipmentCode: 'EQ-001',
+      reportedBy: 'Juan Pérez',
+      reportedDate: '2024-10-15',
+      priority: 'urgente',
+      status: 'en_progreso',
+      description: 'El compresor presenta sobrecalentamiento y ruidos anormales. La temperatura ha aumentado significativamente.',
+      location: 'Planta Norte - Sector A',
+      estimatedTime: '4 horas',
+      assignedTo: 'María García',
+      images: ['image1.jpg', 'image2.jpg']
+    },
+    {
+      id: '2',
+      title: 'Fuga de Aceite en Bomba',
+      equipment: 'Bomba Centrífuga B-205',
+      equipmentCode: 'EQ-002',
+      reportedBy: 'Carlos López',
+      reportedDate: '2024-10-14',
+      priority: 'alta',
+      status: 'asignado',
+      description: 'Se observa fuga de aceite en la base de la bomba. El nivel de aceite ha bajado considerablemente.',
+      location: 'Planta Sur - Sector B',
+      estimatedTime: '2 horas',
+      assignedTo: 'Pedro Rodríguez'
+    },
+    {
+      id: '3',
+      title: 'Vibración Excesiva en Motor',
+      equipment: 'Motor Eléctrico C-310',
+      equipmentCode: 'EQ-003',
+      reportedBy: 'Ana Martínez',
+      reportedDate: '2024-10-13',
+      priority: 'media',
+      status: 'reportado',
+      description: 'El motor presenta vibraciones anormales durante el funcionamiento. Se requiere inspección inmediata.',
+      location: 'Planta Central - Sector C',
+      estimatedTime: '3 horas'
+    },
+    {
+      id: '4',
+      title: 'Falla en Válvula de Control',
+      equipment: 'Válvula de Control D-115',
+      equipmentCode: 'EQ-004',
+      reportedBy: 'Luis Fernández',
+      reportedDate: '2024-10-12',
+      priority: 'baja',
+      status: 'completado',
+      description: 'La válvula no responde correctamente a las señales de control. Se ha completado la reparación.',
+      location: 'Planta Este - Sector D',
+      estimatedTime: '1.5 horas',
+      assignedTo: 'Roberto Silva'
+    }
+  ];
 
-    // Cargar equipos al montar el componente
-    useEffect(() => {
-        const fetchEquipos = async () => {
-            try {
-                const response = await equiposService.getAll();
-                setEquipos(response.results || response);
-            } catch (error) {
-                console.error("Error cargando equipos:", error);
-                setError("No se pudieron cargar los equipos.");
-            }
-        };
-        fetchEquipos();
-    }, []);
+  const mockStats: MaintenanceStats = {
+    totalReportes: 24,
+    pendientes: 8,
+    enProgreso: 6,
+    completados: 9,
+    urgentes: 3
+  };
 
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
-    };
-
-    const resetForm = () => {
-        setFormData({
-            idequipo: '',
-            prioridad: 'Alta',
-            descripcionproblemareportado: '',
-            horometro: '',
-            observacionesadicionales: '',
-        });
-        setImages([]);
-        setError('');
-        setSuccess('');
-    };
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
         setLoading(true);
+        // Usar datos mock por ahora
+        setMaintenances(mockMaintenances);
+        setStats(mockStats);
         setError('');
-        setSuccess('');
-
-        // Validaciones básicas
-        if (!formData.idequipo) {
-            setError("Debe seleccionar un equipo.");
-            setLoading(false);
-            return;
-        }
-
-        if (!formData.descripcionproblemareportado.trim()) {
-            setError("Debe describir el problema reportado.");
-            setLoading(false);
-            return;
-        }
-
-        try {
-            // Crear la orden de trabajo usando el servicio centralizado
-            const otPayload = {
-                idequipo: parseInt(formData.idequipo, 10),
-                prioridad: formData.prioridad,
-                descripcionproblemareportado: formData.descripcionproblemareportado,
-                horometro: formData.horometro ? parseInt(formData.horometro, 10) : null,
-                observacionesfinales: formData.observacionesadicionales,
-            };
-
-            console.log("Enviando datos:", otPayload);
-            const otResponse = await apiClient.post('ordenes-trabajo/reportar-falla/', otPayload);
-            console.log("Respuesta recibida:", otResponse.data);
-            
-            const ordenTrabajoId = otResponse.data.idordentrabajo;
-
-            // Subir imágenes si existen
-            if (images.length > 0) {
-                console.log(`Subiendo ${images.length} imágenes para OT ${ordenTrabajoId}`);
-                const imagePromises = images.map(image => 
-                    apiClient.post('evidencias-ot/', {
-                        idordentrabajo: ordenTrabajoId,
-                        descripcion: image.descripcion || 'Evidencia de falla reportada',
-                        imagen_base64: image.imagen_base64,
-                    })
-                );
-
-                await Promise.all(imagePromises);
-                console.log("Todas las imágenes subidas correctamente");
-            }
-
-            setSuccess(`¡Reporte de falla creado exitosamente! Número de OT: ${otResponse.data.numeroot}`);
-            resetForm();
-            
-        } catch (err: any) {
-            console.error("Error al crear la Orden de Trabajo:", err);
-            console.error("Detalles del error:", err.response?.data);
-            
-            let errorMessage = 'Error al guardar el reporte. Revise los datos e intente de nuevo.';
-            
-            if (err.response?.data?.error) {
-                errorMessage = err.response.data.error;
-            } else if (err.response?.data?.detail) {
-                errorMessage = err.response.data.detail;
-            } else if (err.message) {
-                errorMessage = `Error: ${err.message}`;
-            }
-            
-            setError(errorMessage);
-        } finally {
-            setLoading(false);
-        }
+      } catch (err) {
+        console.error("Error fetching maintenance data:", err);
+        setError("No se pudo cargar la información de mantenimientos.");
+      } finally {
+        setLoading(false);
+      }
     };
 
-    const selectedEquipo = equipos.find(eq => eq.idequipo === parseInt(formData.idequipo, 10));
+    fetchData();
+  }, []);
 
+  // Filtrar mantenimientos
+  const filteredMaintenances = maintenances.filter(maintenance => {
+    const matchesSearch = maintenance.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         maintenance.equipment.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         maintenance.equipmentCode.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesPriority = priorityFilter === 'all' || maintenance.priority === priorityFilter;
+    const matchesStatus = statusFilter === 'all' || maintenance.status === statusFilter;
+    
+    return matchesSearch && matchesPriority && matchesStatus;
+  });
+
+  // Obtener badge de prioridad
+  const getPriorityBadge = (priority: string) => {
+    switch (priority) {
+      case 'baja':
+        return <Badge variant="secondary">Baja</Badge>;
+      case 'media':
+        return <Badge variant="default" className="bg-blue-100 text-blue-800">Media</Badge>;
+      case 'alta':
+        return <Badge variant="default" className="bg-orange-100 text-orange-800">Alta</Badge>;
+      case 'urgente':
+        return <Badge variant="destructive">Urgente</Badge>;
+      default:
+        return <Badge variant="secondary">{priority}</Badge>;
+    }
+  };
+
+  // Obtener badge de estado
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'reportado':
+        return <Badge variant="default" className="bg-yellow-100 text-yellow-800"><Clock className="h-3 w-3 mr-1" />Reportado</Badge>;
+      case 'en_revision':
+        return <Badge variant="default" className="bg-blue-100 text-blue-800"><FileText className="h-3 w-3 mr-1" />En Revisión</Badge>;
+      case 'asignado':
+        return <Badge variant="default" className="bg-purple-100 text-purple-800"><User className="h-3 w-3 mr-1" />Asignado</Badge>;
+      case 'en_progreso':
+        return <Badge variant="default" className="bg-blue-100 text-blue-800"><Wrench className="h-3 w-3 mr-1" />En Progreso</Badge>;
+      case 'completado':
+        return <Badge variant="default" className="bg-green-100 text-green-800"><CheckCircle className="h-3 w-3 mr-1" />Completado</Badge>;
+      case 'cancelado':
+        return <Badge variant="destructive"><AlertTriangle className="h-3 w-3 mr-1" />Cancelado</Badge>;
+      default:
+        return <Badge variant="secondary">{status}</Badge>;
+    }
+  };
+
+  if (loading) {
     return (
-        <div className="p-4 md:p-6 bg-gray-50 min-h-screen">
-            <div className="flex items-center mb-8">
-                <AlertTriangle size={32} className="text-red-500 mr-4" />
-                <h1 className="text-3xl font-bold text-gray-800">Reportar Falla (Mantenimiento No Planificado)</h1>
-            </div>
-            
-            <div className="max-w-4xl mx-auto">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Información de la Falla</CardTitle>
-                        <p className="text-sm text-gray-600">
-                            Complete la información sobre la falla detectada en el equipo
-                        </p>
-                    </CardHeader>
-                    
-                    <form onSubmit={handleSubmit}>
-                        <CardContent className="space-y-6">
-                            
-                            {/* Alertas */}
-                            {error && (
-                                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded flex items-center gap-4" role="alert">
-                                    <AlertTriangle size={20}/>
-                                    <div>
-                                        <p className="font-bold">Error</p>
-                                        <p>{error}</p>
-                                    </div>
-                                </div>
-                            )}
-                            
-                            {success && (
-                                <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded flex items-center gap-4" role="alert">
-                                    <CheckCircle size={20}/>
-                                    <div>
-                                        <p className="font-bold">Éxito</p>
-                                        <p>{success}</p>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Información básica */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Equipo con Falla *
-                                    </label>
-                                    <select 
-                                        name="idequipo" 
-                                        value={formData.idequipo} 
-                                        onChange={handleInputChange} 
-                                        className="w-full p-3 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-red-500 focus:border-red-500" 
-                                        required
-                                        disabled={loading}
-                                    >
-                                        <option value="">-- Seleccione un equipo --</option>
-                                        {equipos.map(eq => (
-                                            <option key={eq.idequipo} value={eq.idequipo}>
-                                                {eq.nombreequipo} ({eq.codigointerno}) {eq.patente && `- ${eq.patente}`}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Prioridad *
-                                    </label>
-                                    <select 
-                                        name="prioridad" 
-                                        value={formData.prioridad} 
-                                        onChange={handleInputChange} 
-                                        className="w-full p-3 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                                        disabled={loading}
-                                    >
-                                        <option value="Baja">Baja</option>
-                                        <option value="Media">Media</option>
-                                        <option value="Alta">Alta</option>
-                                        <option value="Crítica">Crítica</option>
-                                    </select>
-                                </div>
-                            </div>
-
-                            {/* Información adicional */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Horómetro/Kilometraje Actual
-                                    </label>
-                                    <input 
-                                        type="number" 
-                                        name="horometro" 
-                                        value={formData.horometro} 
-                                        onChange={handleInputChange} 
-                                        className="w-full p-3 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                                        placeholder="Ej: 1250"
-                                        disabled={loading}
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Fecha del Reporte
-                                    </label>
-                                    <input 
-                                        type="date" 
-                                        value={new Date().toISOString().split('T')[0]} 
-                                        readOnly 
-                                        className="w-full p-3 border border-gray-300 rounded-md shadow-sm bg-gray-100"
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Descripción del problema */}
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Descripción del Problema *
-                                </label>
-                                <textarea 
-                                    name="descripcionproblemareportado" 
-                                    value={formData.descripcionproblemareportado} 
-                                    onChange={handleInputChange} 
-                                    rows={4}
-                                    className="w-full p-3 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                                    placeholder="Describa detalladamente el problema observado, síntomas, condiciones en que ocurrió, etc."
-                                    required
-                                    disabled={loading}
-                                />
-                                <p className="text-sm text-gray-500 mt-1">
-                                    Sea lo más específico posible para facilitar el diagnóstico
-                                </p>
-                            </div>
-
-                            {/* Observaciones adicionales */}
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Observaciones Adicionales
-                                </label>
-                                <textarea 
-                                    name="observacionesadicionales" 
-                                    value={formData.observacionesadicionales} 
-                                    onChange={handleInputChange} 
-                                    rows={3}
-                                    className="w-full p-3 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                                    placeholder="Información adicional, acciones tomadas, recomendaciones, etc."
-                                    disabled={loading}
-                                />
-                            </div>
-
-                            {/* Evidencias fotográficas */}
-                            <div>
-                                <h3 className="font-bold text-lg text-gray-700 mb-4">Evidencias Fotográficas</h3>
-                                <p className="text-sm text-gray-600 mb-4">
-                                    Adjunte fotografías que muestren el problema reportado para facilitar el diagnóstico
-                                </p>
-                                <MultipleImageUpload
-                                    images={images}
-                                    onImagesChange={setImages}
-                                    maxImages={10}
-                                    maxSizeKB={3072} // 3MB para reportes de fallas
-                                    disabled={loading}
-                                />
-                            </div>
-
-                            {/* Información del equipo seleccionado */}
-                            {selectedEquipo && (
-                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                                    <h4 className="font-medium text-blue-800 mb-2">Información del Equipo Seleccionado</h4>
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                                        <div>
-                                            <span className="font-medium text-blue-700">Nombre:</span>
-                                            <p className="text-blue-600">{selectedEquipo.nombreequipo}</p>
-                                        </div>
-                                        <div>
-                                            <span className="font-medium text-blue-700">Código Interno:</span>
-                                            <p className="text-blue-600">{selectedEquipo.codigointerno}</p>
-                                        </div>
-                                        {selectedEquipo.patente && (
-                                            <div>
-                                                <span className="font-medium text-blue-700">Patente:</span>
-                                                <p className="text-blue-600">{selectedEquipo.patente}</p>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            )}
-                        </CardContent>
-
-                        <CardFooter className="flex justify-between">
-                            <button
-                                type="button"
-                                onClick={resetForm}
-                                disabled={loading}
-                                className="px-6 py-3 border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
-                            >
-                                Limpiar Formulario
-                            </button>
-                            
-                            <button
-                                type="submit"
-                                disabled={loading || !formData.idequipo || !formData.descripcionproblemareportado.trim()}
-                                className={`
-                                    flex items-center justify-center px-6 py-3 rounded-lg font-medium transition-colors
-                                    ${loading || !formData.idequipo || !formData.descripcionproblemareportado.trim()
-                                        ? 'bg-gray-400 text-white cursor-not-allowed' 
-                                        : 'bg-red-600 hover:bg-red-700 text-white'
-                                    }
-                                `}
-                            >
-                                {loading ? (
-                                    <>
-                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                                        Creando Reporte...
-                                    </>
-                                ) : (
-                                    <>
-                                        <Send className="h-4 w-4 mr-2" />
-                                        Crear Reporte de Falla
-                                    </>
-                                )}
-                            </button>
-                        </CardFooter>
-                    </form>
-                </Card>
-            </div>
+      <PageLayout>
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
         </div>
+      </PageLayout>
     );
+  }
+
+  if (error) {
+    return (
+      <PageLayout>
+        <div className="p-8 text-center text-destructive bg-destructive/10 rounded-lg">
+          {error}
+        </div>
+      </PageLayout>
+    );
+  }
+
+  return (
+    <PageLayout>
+      <PageHeader 
+        title="Mantenimiento No Planificado" 
+        subtitle="Reporte y gestión de fallas y mantenimientos de emergencia"
+      >
+        <Button onClick={() => setShowNewForm(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          Nuevo Reporte
+        </Button>
+      </PageHeader>
+
+      {/* Tarjetas de estadísticas */}
+      <StatsGrid>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Reportes</CardTitle>
+            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats?.totalReportes}</div>
+            <p className="text-xs text-muted-foreground">
+              Reportes este mes
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Pendientes</CardTitle>
+            <Clock className="h-4 w-4 text-yellow-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-yellow-600">{stats?.pendientes}</div>
+            <p className="text-xs text-muted-foreground">
+              Requieren asignación
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">En Progreso</CardTitle>
+            <Wrench className="h-4 w-4 text-blue-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-600">{stats?.enProgreso}</div>
+            <p className="text-xs text-muted-foreground">
+              Activamente en reparación
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Urgentes</CardTitle>
+            <AlertTriangle className="h-4 w-4 text-destructive" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-destructive">{stats?.urgentes}</div>
+            <p className="text-xs text-muted-foreground">
+              Requieren atención inmediata
+            </p>
+          </CardContent>
+        </Card>
+      </StatsGrid>
+
+      {/* Lista de mantenimientos */}
+      <ContentGrid>
+        <Card>
+          <CardHeader>
+            <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center">
+              <div>
+                <CardTitle>Reportes de Mantenimiento</CardTitle>
+                <CardDescription>
+                  Lista de fallas y mantenimientos no planificados
+                </CardDescription>
+              </div>
+              
+              <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar reporte..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 w-full md:w-64"
+                  />
+                </div>
+                
+                <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+                  <SelectTrigger className="w-full md:w-48">
+                    <SelectValue placeholder="Prioridad" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas las prioridades</SelectItem>
+                    <SelectItem value="baja">Baja</SelectItem>
+                    <SelectItem value="media">Media</SelectItem>
+                    <SelectItem value="alta">Alta</SelectItem>
+                    <SelectItem value="urgente">Urgente</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-full md:w-48">
+                    <SelectValue placeholder="Estado" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos los estados</SelectItem>
+                    <SelectItem value="reportado">Reportado</SelectItem>
+                    <SelectItem value="en_revision">En Revisión</SelectItem>
+                    <SelectItem value="asignado">Asignado</SelectItem>
+                    <SelectItem value="en_progreso">En Progreso</SelectItem>
+                    <SelectItem value="completado">Completado</SelectItem>
+                    <SelectItem value="cancelado">Cancelado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {filteredMaintenances.map(maintenance => (
+                <div key={maintenance.id} className="border rounded-lg p-4 hover:bg-muted/50">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <h4 className="font-medium">{maintenance.title}</h4>
+                        {getPriorityBadge(maintenance.priority)}
+                        {getStatusBadge(maintenance.status)}
+                      </div>
+                      
+                      <div className="text-sm text-muted-foreground space-y-1">
+                        <div className="flex items-center gap-2">
+                          <Wrench className="h-3 w-3" />
+                          {maintenance.equipment} ({maintenance.equipmentCode})
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <User className="h-3 w-3" />
+                          Reportado por: {maintenance.reportedBy}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Calendar className="h-3 w-3" />
+                          {maintenance.reportedDate}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <FileText className="h-3 w-3" />
+                          {maintenance.location}
+                        </div>
+                        {maintenance.assignedTo && (
+                          <div className="flex items-center gap-2">
+                            <User className="h-3 w-3" />
+                            Asignado a: {maintenance.assignedTo}
+                          </div>
+                        )}
+                        {maintenance.estimatedTime && (
+                          <div className="flex items-center gap-2">
+                            <Clock className="h-3 w-3" />
+                            Tiempo estimado: {maintenance.estimatedTime}
+                          </div>
+                        )}
+                        {maintenance.images && maintenance.images.length > 0 && (
+                          <div className="flex items-center gap-2">
+                            <Camera className="h-3 w-3" />
+                            {maintenance.images.length} imagen(es) adjunta(s)
+                          </div>
+                        )}
+                      </div>
+                      
+                      <p className="text-sm mt-2 text-muted-foreground">
+                        {maintenance.description}
+                      </p>
+                    </div>
+                    
+                    <div className="flex gap-1 ml-4">
+                      <Button variant="outline" size="sm">
+                        Ver
+                      </Button>
+                      <Button variant="outline" size="sm">
+                        Editar
+                      </Button>
+                      {maintenance.status === 'reportado' && (
+                        <Button variant="outline" size="sm">
+                          Asignar
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+              
+              {filteredMaintenances.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground">
+                  <AlertTriangle className="mx-auto h-12 w-12 text-muted-foreground/50" />
+                  <h3 className="mt-2 text-sm font-medium">No se encontraron reportes</h3>
+                  <p className="mt-1 text-sm">No hay reportes que coincidan con los filtros seleccionados.</p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </ContentGrid>
+
+      {/* Formulario de creación de mantenimiento no planificado */}
+      <CreateUnplannedMaintenanceForm
+        isOpen={showNewForm}
+        onClose={() => setShowNewForm(false)}
+        onSuccess={() => {
+          // Recargar datos después de crear
+          console.log('Mantenimiento no planificado creado exitosamente');
+        }}
+      />
+    </PageLayout>
+  );
 };
 
 export default UnplannedMaintenanceView;
-
