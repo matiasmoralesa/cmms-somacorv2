@@ -23,8 +23,8 @@ interface CreateFaenaFormProps {
 
 interface FaenaFormData {
   nombrefaena: string;
-  ubicacionfaena: string;
-  descripcionfaena: string;
+  ubicacion: string;
+  descripcion: string;
   contacto: string;
   telefono: string;
   email: string;
@@ -42,8 +42,8 @@ const CreateFaenaForm: React.FC<CreateFaenaFormProps> = ({
 }) => {
   const [formData, setFormData] = useState<FaenaFormData>({
     nombrefaena: '',
-    ubicacionfaena: '',
-    descripcionfaena: '',
+    ubicacion: '',
+    descripcion: '',
     contacto: '',
     telefono: '',
     email: '',
@@ -77,8 +77,8 @@ const CreateFaenaForm: React.FC<CreateFaenaFormProps> = ({
     if (faenaData) {
       setFormData({
         nombrefaena: faenaData.nombrefaena || '',
-        ubicacionfaena: faenaData.ubicacionfaena || '',
-        descripcionfaena: faenaData.descripcionfaena || '',
+        ubicacion: faenaData.ubicacion || '',
+        descripcion: faenaData.descripcion || '',
         contacto: faenaData.contacto || '',
         telefono: faenaData.telefono || '',
         email: faenaData.email || '',
@@ -91,8 +91,8 @@ const CreateFaenaForm: React.FC<CreateFaenaFormProps> = ({
       // Reset form for new faena
       setFormData({
         nombrefaena: '',
-        ubicacionfaena: '',
-        descripcionfaena: '',
+        ubicacion: '',
+        descripcion: '',
         contacto: '',
         telefono: '',
         email: '',
@@ -117,7 +117,7 @@ const CreateFaenaForm: React.FC<CreateFaenaFormProps> = ({
       setError('El nombre de la faena es requerido');
       return false;
     }
-    if (!formData.ubicacionfaena.trim()) {
+    if (!formData.ubicacion.trim()) {
       setError('La ubicación es requerida');
       return false;
     }
@@ -217,15 +217,15 @@ const CreateFaenaForm: React.FC<CreateFaenaFormProps> = ({
 
             {/* Ubicación */}
             <div className="md:col-span-2">
-              <Label htmlFor="ubicacionfaena" className="text-sm font-medium">
+              <Label htmlFor="ubicacion" className="text-sm font-medium">
                 Ubicación *
               </Label>
               <Input
-                id="ubicacionfaena"
+                id="ubicacion"
                 type="text"
                 placeholder="Ej: Región Metropolitana, Santiago"
-                value={formData.ubicacionfaena}
-                onChange={(e) => handleInputChange('ubicacionfaena', e.target.value)}
+                value={formData.ubicacion}
+                onChange={(e) => handleInputChange('ubicacion', e.target.value)}
                 disabled={loading}
                 className="mt-1"
               />
@@ -338,14 +338,14 @@ const CreateFaenaForm: React.FC<CreateFaenaFormProps> = ({
 
             {/* Descripción */}
             <div className="md:col-span-2">
-              <Label htmlFor="descripcionfaena" className="text-sm font-medium">
+              <Label htmlFor="descripcion" className="text-sm font-medium">
                 Descripción
               </Label>
               <Textarea
-                id="descripcionfaena"
+                id="descripcion"
                 placeholder="Descripción adicional de la faena..."
-                value={formData.descripcionfaena}
-                onChange={(e) => handleInputChange('descripcionfaena', e.target.value)}
+                value={formData.descripcion}
+                onChange={(e) => handleInputChange('descripcion', e.target.value)}
                 disabled={loading}
                 rows={3}
                 className="mt-1"

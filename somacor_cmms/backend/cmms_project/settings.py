@@ -89,6 +89,9 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
+        'OPTIONS': {
+            'timeout': 20,  # Timeout para evitar bloqueos
+        },
     }
 }
 
@@ -298,7 +301,7 @@ CMMS_API = {
     'RATE_LIMIT_PER_MINUTE': 100,
 }
 
-# Bot Integration Configuration
+# Bot Integration Configuration (Apache Airflow + Dask)
 BOT_CONFIG = {
     'ENABLED': True,
     'WEBHOOK_URL': os.environ.get('BOT_WEBHOOK_URL', 'http://localhost:5000/webhook'),
@@ -308,6 +311,10 @@ BOT_CONFIG = {
         'bot_development_token',
         'bot_production_token',
     ],
+    # Configuración para integración con Apache Airflow
+    'AIRFLOW_ENABLED': os.environ.get('AIRFLOW_ENABLED', 'False').lower() == 'true',
+    'AIRFLOW_API_URL': os.environ.get('AIRFLOW_API_URL', 'http://localhost:8080/api/v1'),
+    'DASK_SCHEDULER_URL': os.environ.get('DASK_SCHEDULER_URL', 'tcp://localhost:8786'),
 }
 
 # Cache Configuration (for future implementation)

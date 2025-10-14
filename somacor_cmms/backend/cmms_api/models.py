@@ -31,7 +31,15 @@ class Faenas(models.Model):
     idfaena = models.AutoField(db_column='IDFaena', primary_key=True)
     nombrefaena = models.CharField(db_column='NombreFaena', unique=True, max_length=100)
     ubicacion = models.CharField(db_column='Ubicacion', max_length=255, blank=True, null=True)
+    direccion = models.CharField(db_column='Direccion', max_length=255, blank=True, null=True)
+    ciudad = models.CharField(db_column='Ciudad', max_length=100, blank=True, null=True)
+    region = models.CharField(db_column='Region', max_length=100, blank=True, null=True)
+    contacto = models.CharField(db_column='Contacto', max_length=150, blank=True, null=True)
+    telefono = models.CharField(db_column='Telefono', max_length=20, blank=True, null=True)
+    email = models.EmailField(db_column='Email', max_length=100, blank=True, null=True)
+    descripcion = models.TextField(db_column='Descripcion', blank=True, null=True)
     activa = models.BooleanField(db_column='Activa', default=True)
+    fechacreacion = models.DateTimeField(db_column='FechaCreacion', auto_now_add=True, null=True)
     def __str__(self): return self.nombrefaena
     class Meta: 
         db_table = 'faenas'

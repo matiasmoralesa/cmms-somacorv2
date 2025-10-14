@@ -2,8 +2,8 @@ import axios from 'axios';
 
 // Se crea una instancia de Axios para centralizar la configuración de la API.
 const apiClient = axios.create({
-    baseURL: 'http://localhost:8000/api', // La URL base de tu backend de Django.
-    timeout: 10000, // Timeout de 10 segundos
+    baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/', // La URL base de tu backend de Django.
+    timeout: Number(import.meta.env.VITE_API_TIMEOUT) || 10000, // Timeout configurable desde .env
     headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',

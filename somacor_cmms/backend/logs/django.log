@@ -12141,3 +12141,30 @@ Traceback (most recent call last):
 rest_framework.exceptions.AuthenticationFailed: Token inválido.
 WARNING 2025-10-13 19:39:18,207 log 92272 88708 Unauthorized: /api/v2/equipos/
 WARNING 2025-10-13 19:39:18,208 basehttp 92272 88708 "GET /api/v2/equipos/ HTTP/1.1" 401 92
+INFO 2025-10-14 15:22:43,130 autoreload 2156 140232623518336 Watching for file changes with StatReloader
+INFO 2025-10-14 15:22:53,241 basehttp 2156 140232569820736 "GET /api/test/ HTTP/1.1" 200 29
+INFO 2025-10-14 15:22:57,245 basehttp 2156 140232569820736 "GET /api/v2/equipos/ HTTP/1.1" 200 38622
+INFO 2025-10-14 15:23:00,117 basehttp 2156 140232569820736 "GET /api/v2/faenas/ HTTP/1.1" 200 413
+INFO 2025-10-14 15:23:03,286 basehttp 2156 140232569820736 "GET /api/v2/tipos-equipo/ HTTP/1.1" 200 502
+INFO 2025-10-14 15:37:14,749 basehttp 2156 140232569820736 "GET /api/test/ HTTP/1.1" 200 29
+INFO 2025-10-14 15:40:07,927 basehttp 2156 140232569820736 "OPTIONS /api/login/ HTTP/1.1" 200 0
+INFO 2025-10-14 15:40:09,003 basehttp 2156 140232569820736 "POST /api/login/ HTTP/1.1" 200 309
+INFO 2025-10-14 15:41:49,784 basehttp 2156 140232569820736 "OPTIONS /api/v2/equipos/ HTTP/1.1" 200 0
+INFO 2025-10-14 15:41:50,009 basehttp 2156 140232569820736 "GET /api/v2/equipos/ HTTP/1.1" 200 38622
+ERROR 2025-10-14 15:54:19,899 exceptions 2156 140232569820736 API Error: An error occurred
+Traceback (most recent call last):
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/rest_framework/views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/rest_framework/mixins.py", line 18, in create
+    serializer.is_valid(raise_exception=True)
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/rest_framework/serializers.py", line 233, in is_valid
+    raise ValidationError(self.errors)
+rest_framework.exceptions.ValidationError: {'nombrefaena': [ErrorDetail(string='Este campo es requerido.', code='required')]}
+WARNING 2025-10-14 15:54:19,903 log 2156 140232569820736 Bad Request: /api/v2/faenas/
+WARNING 2025-10-14 15:54:19,903 basehttp 2156 140232569820736 "POST /api/v2/faenas/ HTTP/1.1" 400 93
+INFO 2025-10-14 15:55:04,450 autoreload 2156 140232623518336 /home/ubuntu/cmms-somacorv2/somacor_cmms/backend/cmms_api/models.py changed, reloading.
+INFO 2025-10-14 15:55:05,005 autoreload 4382 140710508384896 Watching for file changes with StatReloader
+INFO 2025-10-14 15:56:31,611 autoreload 5144 140300669899392 Watching for file changes with StatReloader
+INFO 2025-10-14 16:03:35,378 basehttp 4382 140710454724160 "POST /api/v2/faenas/ HTTP/1.1" 201 234
+INFO 2025-10-14 16:05:22,452 basehttp 4382 140710454724160 "POST /api/v2/faenas/ HTTP/1.1" 201 258
