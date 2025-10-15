@@ -157,8 +157,24 @@ export default function DashboardView() {
 
       setStats(statsData);
       setRecentWorkOrders(recentOrdersData);
-      setMonthlyData(monthlyDataData);
-      setMaintenanceTypes(maintenanceTypesData);
+      
+      // Transformar datos mensuales para el gráfico
+      const transformedMonthlyData = monthlyDataData.map((item: any) => ({
+        month: item.nombre || item.mes,
+        completadas: item.ordenes_completadas || 0,
+        pendientes: (item.ordenes_totales || 0) - (item.ordenes_completadas || 0)
+      }));
+      
+      // Transformar tipos de mantenimiento para el gráfico de torta
+      const colors = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
+      const transformedMaintenanceTypes = maintenanceTypesData.map((item: any, index: number) => ({
+        name: item.tipo || item.name,
+        value: item.cantidad || item.value || 0,
+        color: colors[index % colors.length]
+      }));
+      
+      setMonthlyData(transformedMonthlyData);
+      setMaintenanceTypes(transformedMaintenanceTypes);
       
       console.log('📋 [DASHBOARD] Estado actualizado:', {
         stats: statsData,
