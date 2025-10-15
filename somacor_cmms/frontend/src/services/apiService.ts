@@ -620,114 +620,47 @@ export const checklistService = {
 
 export const dashboardService = {
   async getStats(): Promise<DashboardStats> {
-    // Usar datos simulados robustos hasta que la autenticación esté configurada
-    console.log('📊 [DASHBOARD] Usando datos simulados robustos');
-    return {
-      equipos: { 
-        total: 370, 
-        activos: 350, 
-        en_mantenimiento: 20, 
-        disponibilidad: 94.6 
-      },
-      ordenes: { 
-        total: 1050, 
-        pendientes: 45, 
-        completadas_mes: 296, 
-        vencidas: 12, 
-        tiempo_promedio_horas: 24.5 
-      },
-      sistema: { 
-        eficiencia: 87.2, 
-        ordenes_por_dia: 9.9, 
-        tasa_completado: 28.2 
-      }
-    };
+    try {
+      const response = await apiClient.get('v2/dashboard/stats/');
+      console.log('📊 [DASHBOARD] Stats cargadas desde el backend:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ [DASHBOARD] Error cargando stats desde el backend:', error);
+      throw error;
+    }
   },
 
   async getRecentWorkOrders(): Promise<OrdenTrabajo[]> {
-    // Usar datos simulados robustos
-    console.log('📋 [DASHBOARD] Usando órdenes simuladas');
-    return [
-      {
-        idordentrabajo: 1050,
-        numeroot: 'OT-EQ0042-001000',
-        descripcionproblemareportado: 'Desgaste excesivo en cuchilla',
-        prioridad: 'Baja',
-        estado_nombre: 'Completada',
-        equipo_nombre: 'John Deere EC210 42',
-        fechareportefalla: '2024-11-11T11:39:00-03:00',
-        tecnico_nombre: 'supervisor2',
-        solicitante_nombre: 'supervisor1'
-      },
-      {
-        idordentrabajo: 1049,
-        numeroot: 'OT-EQ0038-000999',
-        descripcionproblemareportado: 'Fuga de aceite en transmisión',
-        prioridad: 'Alta',
-        estado_nombre: 'En Proceso',
-        equipo_nombre: 'Caterpillar 320D 38',
-        fechareportefalla: '2024-11-10T14:25:00-03:00',
-        tecnico_nombre: 'tecnico3',
-        solicitante_nombre: 'operador1'
-      },
-      {
-        idordentrabajo: 1048,
-        numeroot: 'OT-EQ0025-000998',
-        descripcionproblemareportado: 'Problema eléctrico en luces',
-        prioridad: 'Media',
-        estado_nombre: 'Pendiente',
-        equipo_nombre: 'Hitachi 320D 25',
-        fechareportefalla: '2024-11-09T09:15:00-03:00',
-        tecnico_nombre: 'tecnico1',
-        solicitante_nombre: 'supervisor2'
-      },
-      {
-        idordentrabajo: 1047,
-        numeroot: 'OT-EQ0015-000997',
-        descripcionproblemareportado: 'Motor con sobrecalentamiento',
-        prioridad: 'Crítica',
-        estado_nombre: 'Completada',
-        equipo_nombre: 'Komatsu EX200 15',
-        fechareportefalla: '2024-11-08T16:45:00-03:00',
-        tecnico_nombre: 'tecnico5',
-        solicitante_nombre: 'operador3'
-      },
-      {
-        idordentrabajo: 1046,
-        numeroot: 'OT-EQ0032-000996',
-        descripcionproblemareportado: 'Falla hidráulica en brazo',
-        prioridad: 'Alta',
-        estado_nombre: 'Completada',
-        equipo_nombre: 'Volvo EC210 32',
-        fechareportefalla: '2024-11-07T12:30:00-03:00',
-        tecnico_nombre: 'tecnico2',
-        solicitante_nombre: 'supervisor3'
-      }
-    ];
+    try {
+      const response = await apiClient.get('v2/dashboard/recent_work_orders/');
+      console.log('📋 [DASHBOARD] Órdenes recientes cargadas desde el backend:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ [DASHBOARD] Error cargando órdenes recientes:', error);
+      throw error;
+    }
   },
 
   async getMonthlyData(): Promise<any[]> {
-    // Usar datos simulados robustos
-    console.log('📅 [DASHBOARD] Usando datos mensuales simulados');
-    return [
-      { mes: '2025-05', nombre: 'May 2025', ordenes_totales: 145, ordenes_completadas: 132, tasa_completado: 91.0 },
-      { mes: '2025-06', nombre: 'Jun 2025', ordenes_totales: 148, ordenes_completadas: 142, tasa_completado: 95.9 },
-      { mes: '2025-07', nombre: 'Jul 2025', ordenes_totales: 151, ordenes_completadas: 138, tasa_completado: 91.4 },
-      { mes: '2025-08', nombre: 'Aug 2025', ordenes_totales: 149, ordenes_completadas: 145, tasa_completado: 97.3 },
-      { mes: '2025-09', nombre: 'Sep 2025', ordenes_totales: 147, ordenes_completadas: 140, tasa_completado: 95.2 },
-      { mes: '2025-10', nombre: 'Oct 2025', ordenes_totales: 148, ordenes_completadas: 135, tasa_completado: 91.2 }
-    ];
+    try {
+      const response = await apiClient.get('v2/dashboard/monthly_data/');
+      console.log('📅 [DASHBOARD] Datos mensuales cargados desde el backend:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ [DASHBOARD] Error cargando datos mensuales:', error);
+      throw error;
+    }
   },
 
   async getMaintenanceTypes(): Promise<any[]> {
-    // Usar datos simulados robustos
-    console.log('🔧 [DASHBOARD] Usando tipos de mantenimiento simulados');
-    return [
-      { tipo: 'Preventivo', cantidad: 425, porcentaje: 40.5, tiempo_promedio_horas: 12.5 },
-      { tipo: 'Correctivo', cantidad: 380, porcentaje: 36.2, tiempo_promedio_horas: 18.3 },
-      { tipo: 'Modificativo', cantidad: 180, porcentaje: 17.1, tiempo_promedio_horas: 24.7 },
-      { tipo: 'Emergencia', cantidad: 65, porcentaje: 6.2, tiempo_promedio_horas: 6.8 }
-    ];
+    try {
+      const response = await apiClient.get('v2/dashboard/maintenance_types/');
+      console.log('🔧 [DASHBOARD] Tipos de mantenimiento cargados desde el backend:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ [DASHBOARD] Error cargando tipos de mantenimiento:', error);
+      throw error;
+    }
   },
 
   async getReporteEficiencia(fechaInicio?: string, fechaFin?: string): Promise<any> {

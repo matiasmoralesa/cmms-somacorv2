@@ -348,7 +348,7 @@ class DashboardViewSet(viewsets.ViewSet):
         """Distribución de tipos de mantenimiento"""
         try:
             tipos = OrdenesTrabajo.objects.values(
-                'idtipomantenimientoot__nombretipo'
+                'idtipomantenimientoot__nombretipomantenimientoot'
             ).annotate(
                 count=Count('idordentrabajo'),
                 tiempo_promedio=Avg('tiempototalminutos')
@@ -357,7 +357,7 @@ class DashboardViewSet(viewsets.ViewSet):
             data = []
             for tipo in tipos:
                 data.append({
-                    'tipo': tipo['idtipomantenimientoot__nombretipo'],
+                    'tipo': tipo['idtipomantenimientoot__nombretipomantenimientoot'],
                     'cantidad': tipo['count'],
                     'porcentaje': round(tipo['count'] / OrdenesTrabajo.objects.count() * 100, 1),
                     'tiempo_promedio_horas': round(tipo['tiempo_promedio'] / 60, 2) if tipo['tiempo_promedio'] else 0
@@ -366,6 +366,21 @@ class DashboardViewSet(viewsets.ViewSet):
             return Response(data)
         except Exception as e:
             logger.error(f"Error en tipos de mantenimiento: {e}")
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    @action(detail=False, methods=['get'])
+    def recent_work_orders(self, request):
+        """Obtener órdenes de trabajo recientes"""
+        try:
+            limit = int(request.query_params.get('limit', 5))
+            ordenes = OrdenesTrabajo.objects.select_related(
+                'idequipo', 'idestadoot', 'idtecnicoasignado'
+            ).order_by('-fechareportefalla')[:limit]
+            
+            serializer = OrdenesTrabajoSerializer(ordenes, many=True)
+            return Response(serializer.data)
+        except Exception as e:
+            logger.error(f"Error obteniendo órdenes recientes: {e}")
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 # =============================================================================

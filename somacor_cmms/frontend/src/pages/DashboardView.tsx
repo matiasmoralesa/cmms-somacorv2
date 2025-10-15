@@ -27,13 +27,24 @@ import ConnectionStatus from '@/components/ConnectionStatus';
 // =================================================================================
 
 interface DashboardStats {
-  ordenes_activas: number;
-  equipos_totales: number;
-  tecnicos_disponibles: number;
-  repuestos_criticos: number;
-  ordenes_urgentes: number;
-  equipos_operativos: number;
-  tecnicos_totales: number;
+  equipos: {
+    total: number;
+    activos: number;
+    en_mantenimiento: number;
+    disponibilidad: number;
+  };
+  ordenes: {
+    total: number;
+    pendientes: number;
+    completadas_mes: number;
+    vencidas: number;
+    tiempo_promedio_horas: number;
+  };
+  sistema: {
+    eficiencia: number;
+    ordenes_por_dia: number;
+    tasa_completado: number;
+  };
 }
 
 interface WorkOrder {
@@ -280,9 +291,9 @@ export default function DashboardView() {
             <ClipboardList className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats?.ordenes_activas || 0}</div>
+            <div className="text-2xl font-bold">{stats?.ordenes.pendientes || 0}</div>
             <p className="text-xs text-muted-foreground">
-              {stats?.ordenes_urgentes || 0} urgentes
+              {stats?.ordenes.vencidas || 0} urgentes
             </p>
             <div className="flex items-center text-xs text-muted-foreground mt-1">
               <TrendingDown className="h-3 w-3 mr-1" />
@@ -297,9 +308,9 @@ export default function DashboardView() {
             <Wrench className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats?.equipos_totales || 0}</div>
+            <div className="text-2xl font-bold">{stats?.equipos.total || 0}</div>
             <p className="text-xs text-muted-foreground">
-              {stats?.equipos_operativos || 0} operativos
+              {stats?.equipos.activos || 0} operativos
             </p>
             <div className="flex items-center text-xs text-muted-foreground mt-1">
               <TrendingUp className="h-3 w-3 mr-1" />
@@ -314,9 +325,9 @@ export default function DashboardView() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats?.tecnicos_disponibles || 0}</div>
+            <div className="text-2xl font-bold">0</div>
             <p className="text-xs text-muted-foreground">
-              De {stats?.tecnicos_totales || 0} totales
+              De 0 totales
             </p>
           </CardContent>
         </Card>
@@ -327,7 +338,7 @@ export default function DashboardView() {
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats?.repuestos_criticos || 0}</div>
+            <div className="text-2xl font-bold">0</div>
             <p className="text-xs text-muted-foreground">
               Requieren reorden
             </p>
