@@ -34,14 +34,17 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 // =================================================================================
 
 interface OrdenTrabajo {
-  id: number;
-  title: string;
-  equipment: string;
-  type: string;
-  status: string;
-  priority: string;
-  assignedTo: string;
-  scheduledDate: string;
+  idordentrabajo: number;
+  numeroot: string;
+  descripcionproblemareportado: string;
+  prioridad: string;
+  equipo_nombre: string;
+  equipo_codigo: string;
+  tecnico_nombre: string;
+  estado_nombre: string;
+  fechareportefalla: string;
+  idtipomantenimientoot: number;
+  tipo_mantenimiento?: string;
 }
 
 interface OrdenesStats {
@@ -158,26 +161,8 @@ export default function OrdenesTrabajoView() {
         ordenesData = [];
       }
       
-      // Transformar los datos del servicio al formato esperado por el componente
-      const ordenesTransformadas = ordenesData.map((orden: any) => ({
-        id: orden.idordentrabajo || orden.id,
-        numero: orden.numeroot || orden.numero,
-        descripcion: orden.descripcionproblemareportado || orden.descripcion,
-        prioridad: orden.prioridad || 'Media',
-        estado: orden.estado_nombre || orden.estado || 'Pendiente',
-        tipo: orden.tipo_mantenimiento_nombre || orden.tipo || 'Correctivo',
-        equipo: orden.equipo_nombre || orden.equipo || 'Sin equipo',
-        tecnico: orden.tecnico_nombre || orden.tecnico || 'Sin técnico',
-        solicitante: orden.solicitante_nombre || orden.solicitante || 'Sin solicitante',
-        fechaReporte: orden.fechareportefalla ? new Date(orden.fechareportefalla).toLocaleDateString() : 'Sin fecha',
-        fechaEjecucion: orden.fechaejecucion ? new Date(orden.fechaejecucion).toLocaleDateString() : null,
-        fechaCompletado: orden.fechacompletado ? new Date(orden.fechacompletado).toLocaleDateString() : null,
-        tiempoTotal: orden.tiempototalminutos ? `${Math.floor(orden.tiempototalminutos / 60)}h ${orden.tiempototalminutos % 60}m` : null,
-        horometro: orden.horometro || 0,
-        observaciones: orden.observacionesfinales || null
-      }));
-      
-      setOrdenes(ordenesTransformadas);
+      // Usar directamente los datos del backend
+      setOrdenes(ordenesData);
     } catch (err) {
       console.error('Error loading ordenes:', err);
       setError('Error al cargar las órdenes de trabajo');
@@ -512,34 +497,34 @@ export default function OrdenesTrabajoView() {
                   </TableRow>
                 ) : (
                   ordenes.map((orden) => (
-                    <TableRow key={orden.id}>
-                      <TableCell className="font-medium">WO-{orden.id.toString().padStart(3, '0')}</TableCell>
-                      <TableCell>{orden.title}</TableCell>
-                      <TableCell>{orden.equipment}</TableCell>
+                    <TableRow key={orden.idordentrabajo}>
+                      <TableCell className="font-medium">{orden.numeroot}</TableCell>
+                      <TableCell>{orden.descripcionproblemareportado}</TableCell>
+                      <TableCell>{orden.equipo_nombre}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          {getTypeIcon(orden.type)}
-                          {orden.type}
+                          {getTypeIcon(orden.tipo_mantenimiento || '')}
+                          {orden.tipo_mantenimiento || 'N/A'}
                         </div>
                       </TableCell>
                       <TableCell>
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(orden.status)}`}>
-                          {orden.status}
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(orden.estado_nombre)}`}>
+                          {orden.estado_nombre}
                         </span>
                       </TableCell>
                       <TableCell>
-                        <Badge variant={getPriorityColor(orden.priority)} className="flex items-center gap-1 w-fit">
-                          {getPriorityIcon(orden.priority)}
-                          {orden.priority}
+                        <Badge variant={getPriorityColor(orden.prioridad)} className="flex items-center gap-1 w-fit">
+                          {getPriorityIcon(orden.prioridad)}
+                          {orden.prioridad}
                         </Badge>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <User className="h-4 w-4 text-muted-foreground" />
-                          {orden.assignedTo}
+                          {orden.tecnico_nombre || 'Sin asignar'}
                         </div>
                       </TableCell>
-                      <TableCell>{orden.scheduledDate}</TableCell>
+                      <TableCell>{new Date(orden.fechareportefalla).toLocaleDateString()}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Button

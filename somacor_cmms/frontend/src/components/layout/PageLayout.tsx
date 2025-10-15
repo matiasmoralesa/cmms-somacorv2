@@ -17,26 +17,28 @@ export function PageLayout({ children, className }: PageLayoutProps) {
 interface PageHeaderProps {
   title: string
   subtitle?: string
+  description?: string
+  action?: React.ReactNode
   children?: React.ReactNode
   className?: string
 }
 
-export function PageHeader({ title, subtitle, children, className }: PageHeaderProps) {
+export function PageHeader({ title, subtitle, description, action, children, className }: PageHeaderProps) {
   return (
     <div className={cn("flex items-center justify-between", className)}>
       <div className="space-y-1">
         <h1 className="text-3xl font-bold tracking-tight text-foreground">
           {title}
         </h1>
-        {subtitle && (
+        {(subtitle || description) && (
           <p className="text-muted-foreground">
-            {subtitle}
+            {subtitle || description}
           </p>
         )}
       </div>
-      {children && (
+      {(action || children) && (
         <div className="flex items-center gap-2">
-          {children}
+          {action || children}
         </div>
       )}
     </div>
