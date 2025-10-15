@@ -95,39 +95,25 @@ Usa /help para ver todos los comandos disponibles.
         logger.info(f"Usuario {update.effective_user.id} ejecutó /help")
         
         help_message = """
-📚 **Comandos Disponibles**
+📚 COMANDOS DISPONIBLES
 
-**Información General:**
-/start - Iniciar el bot
-/help - Mostrar esta ayuda
-/status - Ver estado del sistema
+🔹 Información General:
+• /start - Iniciar el bot
+• /help - Mostrar esta ayuda
+• /status - Ver estado del sistema
 
-**Equipos:**
-/equipos - Listar todos los equipos
-/equipo <id> - Ver detalles de un equipo
-/alertas - Ver alertas de equipos en riesgo
+🔹 Equipos:
+• /equipos - Listar todos los equipos
+• /alertas - Ver alertas de equipos en riesgo
 
-**Órdenes de Trabajo:**
-/ordenes - Listar órdenes de trabajo
-/orden <id> - Ver detalles de una orden
-/pendientes - Ver órdenes pendientes
-/crear_orden - Crear nueva orden de trabajo
+🔹 Órdenes de Trabajo:
+• /ordenes - Listar órdenes de trabajo
+• /pendientes - Ver órdenes pendientes
 
-**Checklists:**
-/checklists - Ver checklists recientes
-/checklist <id> - Ver detalles de un checklist
+🔹 Reportes:
+• /kpis - Ver KPIs principales
 
-**Reportes:**
-/reporte_diario - Generar reporte diario
-/reporte_semanal - Generar reporte semanal
-/kpis - Ver KPIs principales
-
-**Configuración:**
-/notificaciones - Configurar notificaciones
-/preferencias - Configurar preferencias
-
-Para más información sobre un comando específico, usa:
-/help <comando>
+Para más información, visita la documentación en GitHub.
 """
         
         await update.message.reply_text(
