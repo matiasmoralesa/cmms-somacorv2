@@ -12168,3 +12168,464 @@ INFO 2025-10-14 15:55:05,005 autoreload 4382 140710508384896 Watching for file c
 INFO 2025-10-14 15:56:31,611 autoreload 5144 140300669899392 Watching for file changes with StatReloader
 INFO 2025-10-14 16:03:35,378 basehttp 4382 140710454724160 "POST /api/v2/faenas/ HTTP/1.1" 201 234
 INFO 2025-10-14 16:05:22,452 basehttp 4382 140710454724160 "POST /api/v2/faenas/ HTTP/1.1" 201 258
+INFO 2025-10-14 16:28:03,466 basehttp 4382 140710454724160 "GET /api/v2/dashboard/stats/ HTTP/1.1" 200 265
+WARNING 2025-10-14 16:28:11,513 log 4382 140710454724160 Not Found: /api/v2/dashboard/recent-work-orders/
+WARNING 2025-10-14 16:28:11,514 basehttp 4382 140710454724160 "GET /api/v2/dashboard/recent-work-orders/ HTTP/1.1" 404 45352
+WARNING 2025-10-14 16:28:19,201 log 4382 140710454724160 Not Found: /api/v2/dashboard/recent-work-orders/
+WARNING 2025-10-14 16:28:19,201 basehttp 4382 140710454724160 "GET /api/v2/dashboard/recent-work-orders/ HTTP/1.1" 404 45352
+WARNING 2025-10-14 16:28:29,415 log 4382 140710454724160 Not Found: /api/v2/dashboard/
+WARNING 2025-10-14 16:28:29,416 basehttp 4382 140710454724160 "GET /api/v2/dashboard/ HTTP/1.1" 404 45295
+INFO 2025-10-14 16:30:12,411 autoreload 4382 140710508384896 /home/ubuntu/cmms-somacorv2/somacor_cmms/backend/cmms_api/views_v2.py changed, reloading.
+INFO 2025-10-14 16:30:12,771 autoreload 8076 139706242716288 Watching for file changes with StatReloader
+INFO 2025-10-15 14:22:26,255 basehttp 8076 139706187998784 "OPTIONS /api/v2/dashboard/stats/ HTTP/1.1" 200 0
+INFO 2025-10-15 14:22:26,256 basehttp 8076 139706179606080 "OPTIONS /api/v2/dashboard/recent-work-orders/ HTTP/1.1" 200 0
+INFO 2025-10-15 14:22:26,262 basehttp 8076 139706179606080 "OPTIONS /api/v2/dashboard/monthly-data/ HTTP/1.1" 200 0
+INFO 2025-10-15 14:22:26,264 basehttp 8076 139706187998784 "OPTIONS /api/v2/dashboard/maintenance-types/ HTTP/1.1" 200 0
+INFO 2025-10-15 14:22:26,271 basehttp 8076 139706171213376 "OPTIONS /api/v2/dashboard/stats/ HTTP/1.1" 200 0
+INFO 2025-10-15 14:22:26,272 basehttp 8076 139705958004288 "OPTIONS /api/v2/dashboard/recent-work-orders/ HTTP/1.1" 200 0
+INFO 2025-10-15 14:22:26,275 basehttp 8076 139706171213376 "OPTIONS /api/v2/dashboard/monthly-data/ HTTP/1.1" 200 0
+INFO 2025-10-15 14:22:26,290 basehttp 8076 139705958004288 "OPTIONS /api/v2/dashboard/maintenance-types/ HTTP/1.1" 200 0
+WARNING 2025-10-15 14:22:26,295 log 8076 139705941218880 Not Found: /api/v2/dashboard/recent-work-orders/
+WARNING 2025-10-15 14:22:26,296 basehttp 8076 139705941218880 "GET /api/v2/dashboard/recent-work-orders/ HTTP/1.1" 404 46358
+WARNING 2025-10-15 14:22:26,309 log 8076 139705941218880 Not Found: /api/v2/dashboard/recent-work-orders/
+WARNING 2025-10-15 14:22:26,309 basehttp 8076 139705941218880 "GET /api/v2/dashboard/recent-work-orders/ HTTP/1.1" 404 46358
+INFO 2025-10-15 14:22:26,315 basehttp 8076 139705949611584 "GET /api/v2/dashboard/stats/ HTTP/1.1" 200 265
+WARNING 2025-10-15 14:22:26,329 log 8076 139705949611584 Not Found: /api/v2/dashboard/maintenance-types/
+WARNING 2025-10-15 14:22:26,339 log 8076 139706179606080 Not Found: /api/v2/dashboard/monthly-data/
+WARNING 2025-10-15 14:22:26,341 basehttp 8076 139705949611584 "GET /api/v2/dashboard/maintenance-types/ HTTP/1.1" 404 46355
+WARNING 2025-10-15 14:22:26,341 basehttp 8076 139706179606080 "GET /api/v2/dashboard/monthly-data/ HTTP/1.1" 404 46340
+WARNING 2025-10-15 14:22:26,353 log 8076 139706171213376 Not Found: /api/v2/dashboard/monthly-data/
+WARNING 2025-10-15 14:22:26,361 log 8076 139705958004288 Not Found: /api/v2/dashboard/maintenance-types/
+WARNING 2025-10-15 14:22:26,362 basehttp 8076 139706171213376 "GET /api/v2/dashboard/monthly-data/ HTTP/1.1" 404 46340
+INFO 2025-10-15 14:22:26,364 basehttp 8076 139705941218880 "GET /api/v2/dashboard/stats/ HTTP/1.1" 200 265
+WARNING 2025-10-15 14:22:26,365 basehttp 8076 139705958004288 "GET /api/v2/dashboard/maintenance-types/ HTTP/1.1" 404 46355
+INFO 2025-10-15 14:23:00,836 autoreload 9034 140705553916544 Watching for file changes with StatReloader
+WARNING 2025-10-15 14:23:14,282 log 9034 140705500255808 Not Found: /api/v2/dashboard/recent-work-orders/
+WARNING 2025-10-15 14:23:14,283 basehttp 9034 140705500255808 "GET /api/v2/dashboard/recent-work-orders/ HTTP/1.1" 404 46358
+WARNING 2025-10-15 14:23:18,909 log 9034 140705500255808 Not Found: /api/v2/dashboard/recent-work-orders/
+WARNING 2025-10-15 14:23:18,910 basehttp 9034 140705500255808 "GET /api/v2/dashboard/recent-work-orders/ HTTP/1.1" 404 46358
+WARNING 2025-10-15 14:23:34,565 log 9034 140705500255808 Not Found: /api/v2/dashboard/recent-work-orders/
+WARNING 2025-10-15 14:23:34,565 basehttp 9034 140705500255808 "GET /api/v2/dashboard/recent-work-orders/ HTTP/1.1" 404 46358
+INFO 2025-10-15 14:23:44,906 basehttp 9034 140705500255808 "GET /api/v2/dashboard/recent_work_orders/ HTTP/1.1" 200 3211
+INFO 2025-10-15 14:24:00,831 basehttp 9034 140705500255808 "OPTIONS /api/v2/dashboard/recent_work_orders/ HTTP/1.1" 200 0
+INFO 2025-10-15 14:24:00,834 basehttp 9034 140705500255808 "OPTIONS /api/v2/dashboard/monthly_data/ HTTP/1.1" 200 0
+INFO 2025-10-15 14:24:00,834 basehttp 9034 140705490814528 "OPTIONS /api/v2/dashboard/maintenance_types/ HTTP/1.1" 200 0
+INFO 2025-10-15 14:24:00,843 basehttp 9034 140705490814528 "OPTIONS /api/v2/dashboard/recent_work_orders/ HTTP/1.1" 200 0
+INFO 2025-10-15 14:24:00,849 basehttp 9034 140705276098112 "OPTIONS /api/v2/dashboard/monthly_data/ HTTP/1.1" 200 0
+INFO 2025-10-15 14:24:00,853 basehttp 9034 140705276098112 "OPTIONS /api/v2/dashboard/maintenance_types/ HTTP/1.1" 200 0
+ERROR 2025-10-15 14:24:00,857 views_v2 9034 140705250920000 Error en tipos de mantenimiento: Cannot resolve keyword 'nombretipo' into field. Choices are: descripcion, idtipomantenimientoot, nombretipomantenimientoot, ordenestrabajo
+ERROR 2025-10-15 14:24:00,858 log 9034 140705250920000 Internal Server Error: /api/v2/dashboard/maintenance_types/
+ERROR 2025-10-15 14:24:00,858 basehttp 9034 140705250920000 "GET /api/v2/dashboard/maintenance_types/ HTTP/1.1" 500 150
+INFO 2025-10-15 14:24:00,870 basehttp 9034 140705259312704 "GET /api/v2/dashboard/recent_work_orders/ HTTP/1.1" 200 3211
+INFO 2025-10-15 14:24:00,876 basehttp 9034 140705267705408 "GET /api/v2/dashboard/stats/ HTTP/1.1" 200 265
+INFO 2025-10-15 14:24:00,887 basehttp 9034 140705259312704 "GET /api/v2/dashboard/stats/ HTTP/1.1" 200 265
+INFO 2025-10-15 14:24:00,894 basehttp 9034 140705250920000 "GET /api/v2/dashboard/monthly_data/ HTTP/1.1" 200 1282
+ERROR 2025-10-15 14:24:00,908 views_v2 9034 140705276098112 Error en tipos de mantenimiento: Cannot resolve keyword 'nombretipo' into field. Choices are: descripcion, idtipomantenimientoot, nombretipomantenimientoot, ordenestrabajo
+ERROR 2025-10-15 14:24:00,909 log 9034 140705276098112 Internal Server Error: /api/v2/dashboard/maintenance_types/
+ERROR 2025-10-15 14:24:00,910 basehttp 9034 140705276098112 "GET /api/v2/dashboard/maintenance_types/ HTTP/1.1" 500 150
+INFO 2025-10-15 14:24:00,912 basehttp 9034 140705490814528 "GET /api/v2/dashboard/recent_work_orders/ HTTP/1.1" 200 3211
+INFO 2025-10-15 14:24:00,957 basehttp 9034 140705259312704 "GET /api/v2/dashboard/monthly_data/ HTTP/1.1" 200 1282
+INFO 2025-10-15 14:47:17,462 autoreload 9034 140705553916544 /home/ubuntu/cmms-somacorv2/somacor_cmms/backend/cmms_api/views_v2.py changed, reloading.
+INFO 2025-10-15 14:47:18,073 autoreload 10000 140460956361344 Watching for file changes with StatReloader
+INFO 2025-10-15 14:47:27,683 basehttp 10000 140460901803584 "GET /api/v2/dashboard/maintenance_types/ HTTP/1.1" 200 428
+INFO 2025-10-15 14:47:51,483 basehttp 10000 140460876609088 "GET /api/v2/dashboard/maintenance_types/ HTTP/1.1" 200 428
+INFO 2025-10-15 14:47:51,494 basehttp 10000 140460901803584 "GET /api/v2/dashboard/stats/ HTTP/1.1" 200 265
+INFO 2025-10-15 14:47:51,506 basehttp 10000 140460530071104 "GET /api/v2/dashboard/maintenance_types/ HTTP/1.1" 200 428
+INFO 2025-10-15 14:47:51,510 basehttp 10000 140460893410880 "GET /api/v2/dashboard/recent_work_orders/ HTTP/1.1" 200 3211
+INFO 2025-10-15 14:47:51,530 basehttp 10000 140460876609088 "GET /api/v2/dashboard/stats/ HTTP/1.1" 200 265
+INFO 2025-10-15 14:47:51,532 basehttp 10000 140460530071104 "GET /api/v2/dashboard/recent_work_orders/ HTTP/1.1" 200 3211
+INFO 2025-10-15 14:47:51,536 basehttp 10000 140460885018176 "GET /api/v2/dashboard/monthly_data/ HTTP/1.1" 200 1282
+INFO 2025-10-15 14:47:51,555 basehttp 10000 140460893410880 "GET /api/v2/dashboard/monthly_data/ HTTP/1.1" 200 1282
+INFO 2025-10-15 14:48:59,496 basehttp 10000 140460521678400 "GET /api/v2/dashboard/stats/ HTTP/1.1" 200 265
+INFO 2025-10-15 14:49:54,033 basehttp 10000 140460885018176 "GET /api/v2/dashboard/maintenance_types/ HTTP/1.1" 200 428
+INFO 2025-10-15 14:49:54,044 basehttp 10000 140460893410880 "GET /api/v2/dashboard/stats/ HTTP/1.1" 200 265
+INFO 2025-10-15 14:49:54,055 basehttp 10000 140460901803584 "GET /api/v2/dashboard/maintenance_types/ HTTP/1.1" 200 428
+INFO 2025-10-15 14:49:54,069 basehttp 10000 140460530071104 "GET /api/v2/dashboard/recent_work_orders/ HTTP/1.1" 200 3211
+INFO 2025-10-15 14:49:54,078 basehttp 10000 140460885018176 "GET /api/v2/dashboard/stats/ HTTP/1.1" 200 265
+INFO 2025-10-15 14:49:54,091 basehttp 10000 140460876609088 "GET /api/v2/dashboard/monthly_data/ HTTP/1.1" 200 1282
+INFO 2025-10-15 14:49:54,097 basehttp 10000 140460901803584 "GET /api/v2/dashboard/recent_work_orders/ HTTP/1.1" 200 3211
+INFO 2025-10-15 14:49:54,115 basehttp 10000 140460530071104 "GET /api/v2/dashboard/monthly_data/ HTTP/1.1" 200 1282
+INFO 2025-10-15 14:58:34,451 basehttp 10000 140460885018176 "GET /api/v2/roles/ HTTP/1.1" 200 236
+INFO 2025-10-15 14:58:34,458 basehttp 10000 140460885018176 "GET /api/v2/roles/ HTTP/1.1" 200 236
+INFO 2025-10-15 14:58:57,299 basehttp 10000 140460885018176 "GET /api/v2/roles/ HTTP/1.1" 200 236
+INFO 2025-10-15 15:01:04,258 basehttp 10000 140460885018176 "GET /api/v2/roles/ HTTP/1.1" 200 236
+INFO 2025-10-15 15:04:49,013 basehttp 10000 140460885018176 "GET /api/v2/ HTTP/1.1" 200 451
+INFO 2025-10-15 15:04:57,756 basehttp 10000 140460885018176 "GET /api/v2/equipos/ HTTP/1.1" 200 38622
+INFO 2025-10-15 15:05:06,718 basehttp 10000 140460885018176 "GET /api/v2/ordenes-trabajo/ HTTP/1.1" 200 63998
+INFO 2025-10-15 15:07:07,725 basehttp 10000 140460885018176 "OPTIONS /api/v2/equipos/ HTTP/1.1" 200 0
+INFO 2025-10-15 15:07:07,727 basehttp 10000 140460885018176 "OPTIONS /api/v2/tipos-equipo/ HTTP/1.1" 200 0
+INFO 2025-10-15 15:07:07,734 basehttp 10000 140460901803584 "OPTIONS /api/v2/equipos/ HTTP/1.1" 200 0
+INFO 2025-10-15 15:07:07,736 basehttp 10000 140460530071104 "OPTIONS /api/v2/equipos/ HTTP/1.1" 200 0
+INFO 2025-10-15 15:07:07,737 basehttp 10000 140460901803584 "OPTIONS /api/v2/equipos/ HTTP/1.1" 200 0
+INFO 2025-10-15 15:07:07,739 basehttp 10000 140460530071104 "OPTIONS /api/v2/tipos-equipo/ HTTP/1.1" 200 0
+INFO 2025-10-15 15:07:07,791 basehttp 10000 140460901803584 "GET /api/v2/tipos-equipo/ HTTP/1.1" 200 502
+INFO 2025-10-15 15:07:07,843 basehttp 10000 140460530071104 "GET /api/v2/tipos-equipo/ HTTP/1.1" 200 502
+INFO 2025-10-15 15:07:07,997 basehttp 10000 140460876609088 "GET /api/v2/equipos/ HTTP/1.1" 200 38622
+INFO 2025-10-15 15:07:08,227 basehttp 10000 140460530071104 "GET /api/v2/equipos/ HTTP/1.1" 200 38622
+INFO 2025-10-15 15:07:08,556 basehttp 10000 140460876609088 "GET /api/v2/equipos/ HTTP/1.1" 200 38622
+INFO 2025-10-15 15:07:08,787 basehttp 10000 140460530071104 "GET /api/v2/equipos/ HTTP/1.1" 200 38622
+INFO 2025-10-15 15:07:09,013 basehttp 10000 140460876609088 "GET /api/v2/equipos/ HTTP/1.1" 200 38622
+INFO 2025-10-15 15:07:09,239 basehttp 10000 140460530071104 "GET /api/v2/equipos/ HTTP/1.1" 200 38622
+INFO 2025-10-15 15:07:32,709 basehttp 10000 140460530071104 "OPTIONS /api/v2/ordenes-trabajo/ HTTP/1.1" 200 0
+INFO 2025-10-15 15:07:32,712 basehttp 10000 140460530071104 "OPTIONS /api/v2/ordenes-trabajo/ HTTP/1.1" 200 0
+INFO 2025-10-15 15:07:32,718 basehttp 10000 140460876609088 "OPTIONS /api/v2/ordenes-trabajo/ HTTP/1.1" 200 0
+INFO 2025-10-15 15:07:32,721 basehttp 10000 140460901803584 "OPTIONS /api/v2/ordenes-trabajo/ HTTP/1.1" 200 0
+INFO 2025-10-15 15:07:32,727 basehttp 10000 140460876609088 "OPTIONS /api/v2/ordenes-trabajo/ HTTP/1.1" 200 0
+INFO 2025-10-15 15:07:32,758 basehttp 10000 140460901803584 "GET /api/v2/ordenes-trabajo/ HTTP/1.1" 200 63998
+INFO 2025-10-15 15:07:32,799 basehttp 10000 140460530071104 "GET /api/v2/ordenes-trabajo/ HTTP/1.1" 200 63998
+INFO 2025-10-15 15:07:32,875 basehttp 10000 140460876609088 "GET /api/v2/ordenes-trabajo/ HTTP/1.1" 200 63998
+INFO 2025-10-15 15:07:32,906 basehttp 10000 140460530071104 "GET /api/v2/ordenes-trabajo/ HTTP/1.1" 200 63998
+INFO 2025-10-15 15:07:32,980 basehttp 10000 140460876609088 "GET /api/v2/ordenes-trabajo/ HTTP/1.1" 200 63998
+INFO 2025-10-15 15:07:33,062 basehttp 10000 140460530071104 "GET /api/v2/ordenes-trabajo/ HTTP/1.1" 200 63998
+INFO 2025-10-15 15:11:47,406 basehttp 10000 140460885018176 "GET /api/v2/dashboard/maintenance_types/ HTTP/1.1" 200 428
+INFO 2025-10-15 15:11:47,407 basehttp 10000 140460530071104 "GET /api/v2/dashboard/stats/ HTTP/1.1" 200 265
+INFO 2025-10-15 15:11:47,430 basehttp 10000 140460876609088 "GET /api/v2/dashboard/recent_work_orders/ HTTP/1.1" 200 3211
+INFO 2025-10-15 15:11:47,436 basehttp 10000 140460521678400 "GET /api/v2/dashboard/maintenance_types/ HTTP/1.1" 200 428
+INFO 2025-10-15 15:11:47,440 basehttp 10000 140460513285696 "GET /api/v2/dashboard/stats/ HTTP/1.1" 200 265
+INFO 2025-10-15 15:11:47,454 basehttp 10000 140460901803584 "GET /api/v2/dashboard/monthly_data/ HTTP/1.1" 200 1282
+INFO 2025-10-15 15:11:47,455 basehttp 10000 140460530071104 "GET /api/v2/dashboard/recent_work_orders/ HTTP/1.1" 200 3211
+INFO 2025-10-15 15:11:47,523 basehttp 10000 140460513285696 "GET /api/v2/dashboard/monthly_data/ HTTP/1.1" 200 1282
+INFO 2025-10-15 15:12:44,045 basehttp 10000 140460530071104 "GET /api/v2/tipos-equipo/ HTTP/1.1" 200 502
+INFO 2025-10-15 15:12:44,050 basehttp 10000 140460901803584 "GET /api/v2/tipos-equipo/ HTTP/1.1" 200 502
+INFO 2025-10-15 15:12:44,540 basehttp 10000 140460513285696 "GET /api/v2/equipos/ HTTP/1.1" 200 38622
+INFO 2025-10-15 15:12:44,770 basehttp 10000 140460901803584 "GET /api/v2/equipos/ HTTP/1.1" 200 38622
+INFO 2025-10-15 15:12:45,004 basehttp 10000 140460513285696 "GET /api/v2/equipos/ HTTP/1.1" 200 38622
+INFO 2025-10-15 15:12:45,231 basehttp 10000 140460901803584 "GET /api/v2/equipos/ HTTP/1.1" 200 38622
+INFO 2025-10-15 15:12:45,483 basehttp 10000 140460513285696 "GET /api/v2/equipos/ HTTP/1.1" 200 38622
+INFO 2025-10-15 15:12:45,723 basehttp 10000 140460901803584 "GET /api/v2/equipos/ HTTP/1.1" 200 38622
+INFO 2025-10-15 15:14:35,068 basehttp 10000 140460901803584 "GET /api/v2/equipos/ HTTP/1.1" 200 38622
+INFO 2025-10-15 15:28:06,878 basehttp 10000 140460513285696 "GET /api/v2/tipos-equipo/ HTTP/1.1" 200 502
+INFO 2025-10-15 15:28:06,884 basehttp 10000 140460530071104 "GET /api/v2/tipos-equipo/ HTTP/1.1" 200 502
+INFO 2025-10-15 15:28:07,102 basehttp 10000 140460901803584 "GET /api/v2/equipos/ HTTP/1.1" 200 38622
+INFO 2025-10-15 15:28:07,326 basehttp 10000 140460530071104 "GET /api/v2/equipos/ HTTP/1.1" 200 38622
+INFO 2025-10-15 15:28:07,558 basehttp 10000 140460901803584 "GET /api/v2/equipos/ HTTP/1.1" 200 38622
+INFO 2025-10-15 15:28:07,791 basehttp 10000 140460530071104 "GET /api/v2/equipos/ HTTP/1.1" 200 38622
+INFO 2025-10-15 15:28:08,044 basehttp 10000 140460901803584 "GET /api/v2/equipos/ HTTP/1.1" 200 38622
+INFO 2025-10-15 15:28:08,295 basehttp 10000 140460530071104 "GET /api/v2/equipos/ HTTP/1.1" 200 38622
+INFO 2025-10-15 15:28:30,461 basehttp 10000 140460530071104 "OPTIONS /api/estados-equipo/ HTTP/1.1" 200 0
+INFO 2025-10-15 15:28:30,462 basehttp 10000 140460901803584 "OPTIONS /api/v2/faenas/ HTTP/1.1" 200 0
+INFO 2025-10-15 15:28:30,475 basehttp 10000 140460901803584 "GET /api/estados-equipo/ HTTP/1.1" 200 307
+INFO 2025-10-15 15:28:30,477 basehttp 10000 140460530071104 "GET /api/v2/faenas/ HTTP/1.1" 200 1547
+INFO 2025-10-15 15:31:48,347 basehttp 10000 140460530071104 "GET /api/v2/ordenes-trabajo/ HTTP/1.1" 200 63998
+INFO 2025-10-15 15:31:48,377 basehttp 10000 140460901803584 "GET /api/v2/ordenes-trabajo/ HTTP/1.1" 200 63998
+INFO 2025-10-15 15:31:48,415 basehttp 10000 140460530071104 "GET /api/v2/ordenes-trabajo/ HTTP/1.1" 200 63998
+INFO 2025-10-15 15:31:48,488 basehttp 10000 140460901803584 "GET /api/v2/ordenes-trabajo/ HTTP/1.1" 200 63998
+INFO 2025-10-15 15:31:48,520 basehttp 10000 140460530071104 "GET /api/v2/ordenes-trabajo/ HTTP/1.1" 200 63998
+INFO 2025-10-15 15:31:48,592 basehttp 10000 140460901803584 "GET /api/v2/ordenes-trabajo/ HTTP/1.1" 200 63998
+INFO 2025-10-15 15:32:50,020 basehttp 10000 140460885018176 "GET /api/v2/ordenes-trabajo/?limit=1 HTTP/1.1" 200 64006
+INFO 2025-10-15 15:34:38,247 basehttp 10000 140460901803584 "GET /api/v2/ordenes-trabajo/ HTTP/1.1" 200 63998
+INFO 2025-10-15 15:34:38,287 basehttp 10000 140460530071104 "GET /api/v2/ordenes-trabajo/ HTTP/1.1" 200 63998
+INFO 2025-10-15 15:34:38,419 basehttp 10000 140460901803584 "GET /api/v2/ordenes-trabajo/ HTTP/1.1" 200 63998
+INFO 2025-10-15 15:34:38,452 basehttp 10000 140460530071104 "GET /api/v2/ordenes-trabajo/ HTTP/1.1" 200 63998
+INFO 2025-10-15 15:34:38,487 basehttp 10000 140460901803584 "GET /api/v2/ordenes-trabajo/ HTTP/1.1" 200 63998
+INFO 2025-10-15 15:34:38,562 basehttp 10000 140460530071104 "GET /api/v2/ordenes-trabajo/ HTTP/1.1" 200 63998
+INFO 2025-10-15 15:36:42,075 basehttp 10000 140460530071104 "GET /api/v2/ordenes-trabajo/ HTTP/1.1" 200 63998
+INFO 2025-10-15 15:36:42,108 basehttp 10000 140460901803584 "GET /api/v2/ordenes-trabajo/ HTTP/1.1" 200 63998
+INFO 2025-10-15 15:36:42,144 basehttp 10000 140460530071104 "GET /api/v2/ordenes-trabajo/ HTTP/1.1" 200 63998
+INFO 2025-10-15 15:36:42,218 basehttp 10000 140460901803584 "GET /api/v2/ordenes-trabajo/ HTTP/1.1" 200 63998
+INFO 2025-10-15 15:36:42,257 basehttp 10000 140460530071104 "GET /api/v2/ordenes-trabajo/ HTTP/1.1" 200 63998
+INFO 2025-10-15 15:36:42,330 basehttp 10000 140460901803584 "GET /api/v2/ordenes-trabajo/ HTTP/1.1" 200 63998
+INFO 2025-10-15 15:37:11,349 basehttp 10000 140460901803584 "OPTIONS /api/tipos-mantenimiento-ot/ HTTP/1.1" 200 0
+WARNING 2025-10-15 15:37:11,363 log 10000 140460901803584 Not Found: /api/tipos-mantenimiento-ot/
+WARNING 2025-10-15 15:37:11,363 basehttp 10000 140460901803584 "GET /api/tipos-mantenimiento-ot/ HTTP/1.1" 404 14679
+INFO 2025-10-15 15:37:11,582 basehttp 10000 140460530071104 "GET /api/v2/equipos/ HTTP/1.1" 200 38622
+INFO 2025-10-15 15:44:57,187 basehttp 10000 140460901803584 "GET /api/v2/dashboard/stats/ HTTP/1.1" 200 265
+INFO 2025-10-15 15:44:57,188 basehttp 10000 140460885018176 "GET /api/v2/dashboard/maintenance_types/ HTTP/1.1" 200 428
+INFO 2025-10-15 15:44:57,203 basehttp 10000 140460530071104 "GET /api/v2/dashboard/recent_work_orders/ HTTP/1.1" 200 3211
+INFO 2025-10-15 15:44:57,220 basehttp 10000 140460901803584 "GET /api/v2/dashboard/maintenance_types/ HTTP/1.1" 200 428
+INFO 2025-10-15 15:44:57,244 basehttp 10000 140460885018176 "GET /api/v2/dashboard/recent_work_orders/ HTTP/1.1" 200 3211
+INFO 2025-10-15 15:44:57,244 basehttp 10000 140460876625472 "GET /api/v2/dashboard/stats/ HTTP/1.1" 200 265
+INFO 2025-10-15 15:44:57,249 basehttp 10000 140460513285696 "GET /api/v2/dashboard/monthly_data/ HTTP/1.1" 200 1282
+INFO 2025-10-15 15:44:57,269 basehttp 10000 140460876625472 "GET /api/v2/dashboard/monthly_data/ HTTP/1.1" 200 1282
+INFO 2025-10-15 15:47:02,729 basehttp 10000 140460521678400 "GET /api/v2/dashboard/monthly_data/ HTTP/1.1" 200 1282
+INFO 2025-10-15 15:47:12,498 basehttp 10000 140460521678400 "GET /api/v2/dashboard/maintenance_types/ HTTP/1.1" 200 428
+INFO 2025-10-15 15:50:29,283 basehttp 10000 140460885018176 "GET /api/v2/dashboard/stats/ HTTP/1.1" 200 265
+INFO 2025-10-15 15:50:29,293 basehttp 10000 140460901803584 "GET /api/v2/dashboard/maintenance_types/ HTTP/1.1" 200 428
+INFO 2025-10-15 15:50:29,312 basehttp 10000 140460513285696 "GET /api/v2/dashboard/recent_work_orders/ HTTP/1.1" 200 3211
+INFO 2025-10-15 15:50:29,325 basehttp 10000 140460885018176 "GET /api/v2/dashboard/maintenance_types/ HTTP/1.1" 200 428
+INFO 2025-10-15 15:50:29,325 basehttp 10000 140460876625472 "GET /api/v2/dashboard/stats/ HTTP/1.1" 200 265
+INFO 2025-10-15 15:50:29,330 basehttp 10000 140460530071104 "GET /api/v2/dashboard/monthly_data/ HTTP/1.1" 200 1282
+INFO 2025-10-15 15:50:29,341 basehttp 10000 140460901803584 "GET /api/v2/dashboard/recent_work_orders/ HTTP/1.1" 200 3211
+INFO 2025-10-15 15:50:29,363 basehttp 10000 140460876625472 "GET /api/v2/dashboard/monthly_data/ HTTP/1.1" 200 1282
+ERROR 2025-10-15 15:58:08,177 log 10000 140460513285696 Internal Server Error: /api/v2/usuarios/
+Traceback (most recent call last):
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/django/views/decorators/csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/rest_framework/viewsets.py", line 125, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/rest_framework/views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/rest_framework/views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/rest_framework/views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/rest_framework/views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/rest_framework/mixins.py", line 38, in list
+    queryset = self.filter_queryset(self.get_queryset())
+                                    ^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/cmms_api/views_v2.py", line 478, in get_queryset
+    return Usuarios.objects.select_related('idrol').order_by('nombres', 'apellidos')
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/django/db/models/query.py", line 1722, in order_by
+    obj.query.add_ordering(*field_names)
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/django/db/models/sql/query.py", line 2305, in add_ordering
+    self.names_to_path(item.split(LOOKUP_SEP), self.model._meta)
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/django/db/models/sql/query.py", line 1806, in names_to_path
+    raise FieldError(
+django.core.exceptions.FieldError: Cannot resolve keyword 'nombres' into field. Choices are: departamento, idrol, idrol_id, user, user_id
+ERROR 2025-10-15 15:58:08,185 basehttp 10000 140460513285696 "GET /api/v2/usuarios/ HTTP/1.1" 500 119075
+ERROR 2025-10-15 15:58:08,262 log 10000 140460513285696 Internal Server Error: /api/v2/usuarios/
+Traceback (most recent call last):
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/django/views/decorators/csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/rest_framework/viewsets.py", line 125, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/rest_framework/views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/rest_framework/views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/rest_framework/views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/rest_framework/views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/rest_framework/mixins.py", line 38, in list
+    queryset = self.filter_queryset(self.get_queryset())
+                                    ^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/cmms_api/views_v2.py", line 478, in get_queryset
+    return Usuarios.objects.select_related('idrol').order_by('nombres', 'apellidos')
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/django/db/models/query.py", line 1722, in order_by
+    obj.query.add_ordering(*field_names)
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/django/db/models/sql/query.py", line 2305, in add_ordering
+    self.names_to_path(item.split(LOOKUP_SEP), self.model._meta)
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/django/db/models/sql/query.py", line 1806, in names_to_path
+    raise FieldError(
+django.core.exceptions.FieldError: Cannot resolve keyword 'nombres' into field. Choices are: departamento, idrol, idrol_id, user, user_id
+ERROR 2025-10-15 15:58:08,266 basehttp 10000 140460513285696 "GET /api/v2/usuarios/ HTTP/1.1" 500 119075
+INFO 2025-10-15 15:58:08,426 basehttp 10000 140460885018176 "GET /api/v2/equipos/ HTTP/1.1" 200 38622
+INFO 2025-10-15 15:58:08,657 basehttp 10000 140460885018176 "GET /api/v2/equipos/ HTTP/1.1" 200 38622
+ERROR 2025-10-15 16:07:11,358 log 10000 140460513285696 Internal Server Error: /api/v2/usuarios/
+Traceback (most recent call last):
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/django/views/decorators/csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/rest_framework/viewsets.py", line 125, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/rest_framework/views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/rest_framework/views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/rest_framework/views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/rest_framework/views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/rest_framework/mixins.py", line 38, in list
+    queryset = self.filter_queryset(self.get_queryset())
+                                    ^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/cmms_api/views_v2.py", line 478, in get_queryset
+    return Usuarios.objects.select_related('idrol').order_by('nombres', 'apellidos')
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/django/db/models/query.py", line 1722, in order_by
+    obj.query.add_ordering(*field_names)
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/django/db/models/sql/query.py", line 2305, in add_ordering
+    self.names_to_path(item.split(LOOKUP_SEP), self.model._meta)
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/django/db/models/sql/query.py", line 1806, in names_to_path
+    raise FieldError(
+django.core.exceptions.FieldError: Cannot resolve keyword 'nombres' into field. Choices are: departamento, idrol, idrol_id, user, user_id
+ERROR 2025-10-15 16:07:11,359 basehttp 10000 140460513285696 "GET /api/v2/usuarios/ HTTP/1.1" 500 119075
+ERROR 2025-10-15 16:07:11,438 log 10000 140460513285696 Internal Server Error: /api/v2/usuarios/
+Traceback (most recent call last):
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/django/views/decorators/csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/rest_framework/viewsets.py", line 125, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/rest_framework/views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/rest_framework/views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/rest_framework/views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/rest_framework/views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/rest_framework/mixins.py", line 38, in list
+    queryset = self.filter_queryset(self.get_queryset())
+                                    ^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/cmms_api/views_v2.py", line 478, in get_queryset
+    return Usuarios.objects.select_related('idrol').order_by('nombres', 'apellidos')
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/django/db/models/query.py", line 1722, in order_by
+    obj.query.add_ordering(*field_names)
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/django/db/models/sql/query.py", line 2305, in add_ordering
+    self.names_to_path(item.split(LOOKUP_SEP), self.model._meta)
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/django/db/models/sql/query.py", line 1806, in names_to_path
+    raise FieldError(
+django.core.exceptions.FieldError: Cannot resolve keyword 'nombres' into field. Choices are: departamento, idrol, idrol_id, user, user_id
+ERROR 2025-10-15 16:07:11,443 basehttp 10000 140460513285696 "GET /api/v2/usuarios/ HTTP/1.1" 500 119075
+INFO 2025-10-15 16:07:11,637 basehttp 10000 140460885018176 "GET /api/v2/equipos/ HTTP/1.1" 200 38622
+INFO 2025-10-15 16:07:11,963 basehttp 10000 140460885018176 "GET /api/v2/equipos/ HTTP/1.1" 200 38622
+WARNING 2025-10-15 16:07:32,116 log 10000 140460885018176 Not Found: /api/v2/checklist-templates/
+WARNING 2025-10-15 16:07:32,117 basehttp 10000 140460885018176 "GET /api/v2/checklist-templates/ HTTP/1.1" 404 46331
+INFO 2025-10-15 16:09:20,653 autoreload 10000 140460956361344 /home/ubuntu/cmms-somacorv2/somacor_cmms/backend/cmms_api/views_v2.py changed, reloading.
+INFO 2025-10-15 16:09:21,037 autoreload 14184 139641297990272 Watching for file changes with StatReloader
+INFO 2025-10-15 16:10:47,364 autoreload 14184 139641297990272 /home/ubuntu/cmms-somacorv2/somacor_cmms/backend/cmms_api/urls_v2.py changed, reloading.
+INFO 2025-10-15 16:10:47,896 autoreload 14241 140514525450880 Watching for file changes with StatReloader
+ERROR 2025-10-15 16:11:07,782 log 14241 140514471794240 Internal Server Error: /api/v2/checklist-templates/
+Traceback (most recent call last):
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/django/views/decorators/csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/rest_framework/viewsets.py", line 125, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/rest_framework/views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/rest_framework/views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/rest_framework/views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/rest_framework/views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/rest_framework/mixins.py", line 43, in list
+    return self.get_paginated_response(serializer.data)
+                                       ^^^^^^^^^^^^^^^
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/rest_framework/serializers.py", line 797, in data
+    ret = super().data
+          ^^^^^^^^^^^^
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/rest_framework/serializers.py", line 251, in data
+    self._data = self.to_representation(self.instance)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/rest_framework/serializers.py", line 715, in to_representation
+    return [
+           ^
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/rest_framework/serializers.py", line 716, in <listcomp>
+    self.child.to_representation(item) for item in iterable
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/rest_framework/serializers.py", line 525, in to_representation
+    for field in fields:
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/rest_framework/serializers.py", line 386, in _readable_fields
+    for field in self.fields.values():
+                 ^^^^^^^^^^^
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/django/utils/functional.py", line 47, in __get__
+    res = instance.__dict__[self.name] = self.func(instance)
+                                         ^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/rest_framework/serializers.py", line 374, in fields
+    for key, value in self.get_fields().items():
+                      ^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/rest_framework/serializers.py", line 1105, in get_fields
+    field_class, field_kwargs = self.build_field(
+                                ^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/rest_framework/serializers.py", line 1251, in build_field
+    return self.build_unknown_field(field_name, model_class)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/rest_framework/serializers.py", line 1369, in build_unknown_field
+    raise ImproperlyConfigured(
+django.core.exceptions.ImproperlyConfigured: Field name `id` is not valid for model `ChecklistTemplate` in `cmms_api.serializers_v2.ChecklistTemplateSerializer`.
+ERROR 2025-10-15 16:11:07,785 basehttp 14241 140514471794240 "GET /api/v2/checklist-templates/ HTTP/1.1" 500 152817
+ERROR 2025-10-15 16:11:19,982 log 14241 140514471794240 Internal Server Error: /api/v2/checklist-templates/
+Traceback (most recent call last):
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/django/views/decorators/csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/rest_framework/viewsets.py", line 125, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/rest_framework/views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/rest_framework/views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/rest_framework/views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/rest_framework/views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/rest_framework/mixins.py", line 43, in list
+    return self.get_paginated_response(serializer.data)
+                                       ^^^^^^^^^^^^^^^
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/rest_framework/serializers.py", line 797, in data
+    ret = super().data
+          ^^^^^^^^^^^^
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/rest_framework/serializers.py", line 251, in data
+    self._data = self.to_representation(self.instance)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/rest_framework/serializers.py", line 715, in to_representation
+    return [
+           ^
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/rest_framework/serializers.py", line 716, in <listcomp>
+    self.child.to_representation(item) for item in iterable
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/rest_framework/serializers.py", line 525, in to_representation
+    for field in fields:
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/rest_framework/serializers.py", line 386, in _readable_fields
+    for field in self.fields.values():
+                 ^^^^^^^^^^^
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/django/utils/functional.py", line 47, in __get__
+    res = instance.__dict__[self.name] = self.func(instance)
+                                         ^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/rest_framework/serializers.py", line 374, in fields
+    for key, value in self.get_fields().items():
+                      ^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/rest_framework/serializers.py", line 1105, in get_fields
+    field_class, field_kwargs = self.build_field(
+                                ^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/rest_framework/serializers.py", line 1251, in build_field
+    return self.build_unknown_field(field_name, model_class)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/cmms-somacorv2/somacor_cmms/backend/venv/lib/python3.11/site-packages/rest_framework/serializers.py", line 1369, in build_unknown_field
+    raise ImproperlyConfigured(
+django.core.exceptions.ImproperlyConfigured: Field name `id` is not valid for model `ChecklistTemplate` in `cmms_api.serializers_v2.ChecklistTemplateSerializer`.
+ERROR 2025-10-15 16:11:19,983 basehttp 14241 140514471794240 "GET /api/v2/checklist-templates/ HTTP/1.1" 500 152817

@@ -590,3 +590,80 @@ class RolesViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         return Roles.objects.all().order_by('nombrerol')
+
+
+
+# =============================================================================
+# VIEWSETS DE CHECKLIST TEMPLATES
+# =============================================================================
+
+class ChecklistTemplateViewSet(viewsets.ModelViewSet):
+    """ViewSet para plantillas de checklist"""
+    queryset = ChecklistTemplate.objects.select_related('tipo_equipo').all()
+    serializer_class = ChecklistTemplateSerializer
+    permission_classes = [permissions.AllowAny]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
+    filterset_fields = ['tipo_equipo', 'activo']
+    search_fields = ['nombre']
+    ordering = ['nombre']
+    
+    @action(detail=True, methods=['get'])
+    def with_items(self, request, pk=None):
+        """Obtener plantilla con todas sus categorías e items"""
+        try:
+            template = self.get_object()
+            categories = ChecklistCategory.objects.filter(template=template).prefetch_related('items').order_by('orden')
+            
+            data = {
+                'id_template': template.id_template,
+                'nombre': template.nombre,
+                'tipo_equipo': {
+                    'id': template.tipo_equipo.idtipoequipo,
+                    'nombre': template.tipo_equipo.nombretipo
+                },
+                'activo': template.activo,
+                'categorias': []
+            }
+            
+            for category in categories:
+                items = category.items.all().order_by('orden')
+                data['categorias'].append({
+                    'id_category': category.id_category,
+                    'nombre': category.nombre,
+                    'orden': category.orden,
+                    'items': [
+                        {
+                            'id_item': item.id_item,
+                            'texto': item.texto,
+                            'es_critico': item.es_critico,
+                            'orden': item.orden
+                        }
+                        for item in items
+                    ]
+                })
+            
+            return Response(data)
+        except Exception as e:
+            logger.error(f"Error obteniendo plantilla con items: {e}")
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class ChecklistCategoryViewSet(viewsets.ModelViewSet):
+    """ViewSet para categorías de checklist"""
+    queryset = ChecklistCategory.objects.select_related('template').all()
+    serializer_class = ChecklistCategorySerializer
+    permission_classes = [permissions.AllowAny]
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['template']
+    ordering = ['template', 'orden']
+
+
+class ChecklistItemViewSet(viewsets.ModelViewSet):
+    """ViewSet para items de checklist"""
+    queryset = ChecklistItem.objects.select_related('category').all()
+    serializer_class = ChecklistItemSerializer
+    permission_classes = [permissions.AllowAny]
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['category', 'es_critico']
+    ordering = ['category', 'orden']
+
