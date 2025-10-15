@@ -63,34 +63,13 @@ class BaseService<T> {
 // Servicios específicos para cada módulo
 export const equiposService = {
   async getAll(params?: { search?: string; limit?: number }): Promise<any> {
-    // Usar datos simulados robustos hasta que la autenticación esté configurada
-    console.log('🏗️ [EQUIPOS] Usando datos simulados robustos');
-    
-    // Generar datos simulados de equipos
-    const equiposSimulados = this.generateMockEquipos();
-    
-    // Aplicar filtros si existen
-    let equiposFiltrados = equiposSimulados;
-    
-    if (params?.search) {
-      const searchTerm = params.search.toLowerCase();
-      equiposFiltrados = equiposSimulados.filter(equipo => 
-        equipo.nombreequipo.toLowerCase().includes(searchTerm) ||
-        equipo.codigointerno.toLowerCase().includes(searchTerm) ||
-        equipo.patente?.toLowerCase().includes(searchTerm)
-      );
+    try {
+      const response = await apiClient.get('v2/equipos/', { params });
+      return response.data;
+    } catch (error) {
+      console.error('Error al obtener equipos:', error);
+      throw error;
     }
-    
-    if (params?.limit) {
-      equiposFiltrados = equiposFiltrados.slice(0, params.limit);
-    }
-    
-    return {
-      results: equiposFiltrados,
-      count: equiposFiltrados.length,
-      total: equiposSimulados.length,
-      has_more: equiposFiltrados.length === (params?.limit || 20)
-    };
   },
 
   async getById(id: number): Promise<Equipo> {
@@ -140,45 +119,61 @@ export const equiposService = {
   },
 
   async getCategories(): Promise<string[]> {
-    // Usar datos simulados
-    console.log('📂 [EQUIPOS] Usando categorías simuladas');
-    const equipos = this.generateMockEquipos();
-    const categorias = [...new Set(equipos.map(e => e.tipo_equipo_nombre))];
-    return categorias;
+    try {
+      const response = await apiClient.get('v2/tipos-equipo/');
+      return response.data.results.map((t: any) => t.nombretipo);
+    } catch (error) {
+      console.error('Error al obtener categorías:', error);
+      return [];
+    }
   },
 
   async getStates(): Promise<string[]> {
-    // Usar datos simulados
-    console.log('🔧 [EQUIPOS] Usando estados simulados');
-    const equipos = this.generateMockEquipos();
-    const estados = [...new Set(equipos.map(e => e.estado_nombre))];
-    return estados;
+    try {
+      const response = await apiClient.get('v2/equipos/');
+      const equipos = response.data.results;
+      const estados = [...new Set(equipos.map((e: any) => e.estado_nombre))];
+      return estados;
+    } catch (error) {
+      console.error('Error al obtener estados:', error);
+      return [];
+    }
   },
 
   async getStats(): Promise<any> {
-    // Usar datos simulados robustos
-    console.log('📊 [EQUIPOS] Usando estadísticas simuladas');
-    
-    // Generar estadísticas basadas en los equipos simulados
-    const equipos = this.generateMockEquipos();
-    const stats = {
-      total_equipos: equipos.length,
-      equipos_activos: equipos.filter(e => e.activo).length,
-      equipos_inactivos: equipos.filter(e => !e.activo).length,
-      equipos_criticos: equipos.filter(e => e.estado_nombre === 'En Mantenimiento').length,
-      por_estado: {},
-      por_tipo: {},
-      por_faena: {}
-    };
-    
-    // Calcular estadísticas por estado
-    equipos.forEach(equipo => {
-      stats.por_estado[equipo.estado_nombre] = (stats.por_estado[equipo.estado_nombre] || 0) + 1;
-      stats.por_tipo[equipo.tipo_equipo_nombre] = (stats.por_tipo[equipo.tipo_equipo_nombre] || 0) + 1;
-      stats.por_faena[equipo.faena_nombre] = (stats.por_faena[equipo.faena_nombre] || 0) + 1;
-    });
-    
-    return stats;
+    try {
+      const response = await apiClient.get('v2/equipos/');
+      const equipos = response.data.results;
+      
+      const stats = {
+        total_equipos: response.data.count,
+        equipos_activos: equipos.filter((e: any) => e.activo).length,
+        equipos_inactivos: equipos.filter((e: any) => !e.activo).length,
+        equipos_criticos: equipos.filter((e: any) => e.estado_nombre === 'En Mantenimiento').length,
+        por_estado: {} as Record<string, number>,
+        por_tipo: {} as Record<string, number>,
+        por_faena: {} as Record<string, number>
+      };
+      
+      equipos.forEach((equipo: any) => {
+        stats.por_estado[equipo.estado_nombre] = (stats.por_estado[equipo.estado_nombre] || 0) + 1;
+        stats.por_tipo[equipo.tipo_equipo_nombre] = (stats.por_tipo[equipo.tipo_equipo_nombre] || 0) + 1;
+        stats.por_faena[equipo.faena_nombre] = (stats.por_faena[equipo.faena_nombre] || 0) + 1;
+      });
+      
+      return stats;
+    } catch (error) {
+      console.error('Error al obtener estadísticas:', error);
+      return {
+        total_equipos: 0,
+        equipos_activos: 0,
+        equipos_inactivos: 0,
+        equipos_criticos: 0,
+        por_estado: {},
+        por_tipo: {},
+        por_faena: {}
+      };
+    }
   },
   
   async getEquiposCriticos(): Promise<Equipo[]> {
@@ -221,43 +216,7 @@ export const equiposService = {
     }
   },
 
-  // Función para generar datos simulados de equipos
-  generateMockEquipos() {
-    const marcas = ['Caterpillar', 'Komatsu', 'Hitachi', 'Volvo', 'JCB', 'Liebherr', 'Case', 'John Deere'];
-    const modelos = ['320D', 'EX200', '580SN', 'EC210', 'PC200', 'CX130', 'L150E', '950M', 'PC400'];
-    const tipos = ['Excavadora', 'Cargador Frontal', 'Perforadora', 'Bomba', 'Generador', 'Bulldozer', 'Compactador'];
-    const estados = ['Activo', 'En Mantenimiento', 'Fuera de Servicio', 'Stand By'];
-    const faenas = ['Faena Norte', 'Faena Sur', 'Faena Central', 'Faena Este', 'Faena Oeste'];
-    
-    const equipos = [];
-    
-    for (let i = 1; i <= 50; i++) {
-      const marca = marcas[Math.floor(Math.random() * marcas.length)];
-      const modelo = modelos[Math.floor(Math.random() * modelos.length)];
-      const tipo = tipos[Math.floor(Math.random() * tipos.length)];
-      const estado = estados[Math.floor(Math.random() * estados.length)];
-      const faena = faenas[Math.floor(Math.random() * faenas.length)];
-      
-      equipos.push({
-        idequipo: i,
-        codigointerno: `EQ${i.toString().padStart(3, '0')}`,
-        nombreequipo: `${marca} ${modelo} ${i}`,
-        marca: marca,
-        modelo: modelo,
-        anio: 2015 + Math.floor(Math.random() * 9),
-        patente: `PAT${i.toString().padStart(4, '0')}`,
-        tipo_equipo_nombre: tipo,
-        estado_nombre: estado,
-        faena_nombre: faena,
-        activo: estado === 'Activo',
-        total_ordenes: Math.floor(Math.random() * 20),
-        ordenes_pendientes: Math.floor(Math.random() * 5),
-        ultima_mantenimiento: new Date(Date.now() - Math.random() * 90 * 24 * 60 * 60 * 1000).toISOString()
-      });
-    }
-    
-    return equipos;
-  }
+
 };
 
 export const tiposEquipoService = new BaseService<TipoEquipo>('tipos-equipo/');
@@ -347,46 +306,13 @@ const generateMockOrdenes = () => {
 
 export const ordenesTrabajoService = {
   async getAll(params?: { search?: string; status?: string; priority?: string; limit?: number }): Promise<any> {
-    // Usar datos simulados robustos hasta que la autenticación esté configurada
-    console.log('📋 [ORDENES] Usando datos simulados robustos');
-    
-    // Generar datos simulados de órdenes
-    const ordenesSimuladas = generateMockOrdenes();
-    
-    // Aplicar filtros si existen
-    let ordenesFiltradas = ordenesSimuladas;
-    
-    if (params?.search) {
-      const searchTerm = params.search.toLowerCase();
-      ordenesFiltradas = ordenesFiltradas.filter(orden => 
-        orden.numeroot.toLowerCase().includes(searchTerm) ||
-        orden.descripcionproblemareportado.toLowerCase().includes(searchTerm) ||
-        orden.equipo_nombre.toLowerCase().includes(searchTerm)
-      );
+    try {
+      const response = await apiClient.get('v2/ordenes-trabajo/', { params });
+      return response.data;
+    } catch (error) {
+      console.error('Error al obtener órdenes de trabajo:', error);
+      throw error;
     }
-    
-    if (params?.status && params.status !== 'all') {
-      ordenesFiltradas = ordenesFiltradas.filter(orden => 
-        orden.estado_nombre === params.status
-      );
-    }
-    
-    if (params?.priority && params.priority !== 'all') {
-      ordenesFiltradas = ordenesFiltradas.filter(orden => 
-        orden.prioridad === params.priority
-      );
-    }
-    
-    if (params?.limit) {
-      ordenesFiltradas = ordenesFiltradas.slice(0, params.limit);
-    }
-    
-    return {
-      results: ordenesFiltradas,
-      count: ordenesFiltradas.length,
-      total: ordenesSimuladas.length,
-      has_more: ordenesFiltradas.length === (params?.limit || 20)
-    };
   },
 
   async getById(id: number): Promise<OrdenTrabajo> {
@@ -436,40 +362,63 @@ export const ordenesTrabajoService = {
   },
 
   async getStats(): Promise<any> {
-    // Usar datos simulados robustos
-    console.log('📊 [ORDENES] Usando estadísticas simuladas');
-    
-    // Generar estadísticas basadas en los órdenes simulados
-    const ordenes = generateMockOrdenes();
-    const stats = {
-      total_ordenes: ordenes.length,
-      pendientes: ordenes.filter(o => o.estado_nombre === 'Pendiente').length,
-      en_proceso: ordenes.filter(o => o.estado_nombre === 'En Proceso').length,
-      completadas: ordenes.filter(o => o.estado_nombre === 'Completada').length,
-      canceladas: ordenes.filter(o => o.estado_nombre === 'Cancelada').length,
-      por_estado: {},
-      por_prioridad: {},
-      por_tipo_mantenimiento: {}
-    };
-    
-    // Calcular estadísticas por estado, prioridad y tipo
-    ordenes.forEach(orden => {
-      stats.por_estado[orden.estado_nombre] = (stats.por_estado[orden.estado_nombre] || 0) + 1;
-      stats.por_prioridad[orden.prioridad] = (stats.por_prioridad[orden.prioridad] || 0) + 1;
-      stats.por_tipo_mantenimiento[orden.tipo_mantenimiento_nombre] = (stats.por_tipo_mantenimiento[orden.tipo_mantenimiento_nombre] || 0) + 1;
-    });
-    
-    return stats;
+    try {
+      const response = await apiClient.get('v2/ordenes-trabajo/');
+      const ordenes = response.data.results;
+      
+      const stats = {
+        total_ordenes: response.data.count,
+        pendientes: ordenes.filter((o: any) => o.estado_nombre === 'Pendiente').length,
+        en_proceso: ordenes.filter((o: any) => o.estado_nombre === 'En Proceso').length,
+        completadas: ordenes.filter((o: any) => o.estado_nombre === 'Completada').length,
+        canceladas: ordenes.filter((o: any) => o.estado_nombre === 'Cancelada').length,
+        por_estado: {} as Record<string, number>,
+        por_prioridad: {} as Record<string, number>,
+        por_tipo_mantenimiento: {} as Record<string, number>
+      };
+      
+      ordenes.forEach((orden: any) => {
+        stats.por_estado[orden.estado_nombre] = (stats.por_estado[orden.estado_nombre] || 0) + 1;
+        stats.por_prioridad[orden.prioridad] = (stats.por_prioridad[orden.prioridad] || 0) + 1;
+      });
+      
+      return stats;
+    } catch (error) {
+      console.error('Error al obtener estadísticas de órdenes:', error);
+      return {
+        total_ordenes: 0,
+        pendientes: 0,
+        en_proceso: 0,
+        completadas: 0,
+        canceladas: 0,
+        por_estado: {},
+        por_prioridad: {},
+        por_tipo_mantenimiento: {}
+      };
+    }
   },
 
   async getFilters(): Promise<any> {
-    // Usar datos simulados robustos
-    console.log('🔍 [ORDENES] Usando filtros simulados');
-    return {
-      statuses: ['Pendiente', 'En Proceso', 'Completada', 'Cancelada'],
-      priorities: ['Baja', 'Media', 'Alta', 'Crítica'],
-      types: ['Preventivo', 'Correctivo', 'Modificativo', 'Emergencia']
-    };
+    try {
+      const response = await apiClient.get('v2/ordenes-trabajo/');
+      const ordenes = response.data.results;
+      
+      const statuses = [...new Set(ordenes.map((o: any) => o.estado_nombre))];
+      const priorities = [...new Set(ordenes.map((o: any) => o.prioridad))];
+      
+      return {
+        statuses,
+        priorities,
+        types: ['Preventivo', 'Correctivo', 'Modificativo', 'Emergencia']
+      };
+    } catch (error) {
+      console.error('Error al obtener filtros:', error);
+      return {
+        statuses: [],
+        priorities: [],
+        types: []
+      };
+    }
   },
 
   async getByEquipment(equipmentId: number): Promise<OrdenTrabajo[]> {
