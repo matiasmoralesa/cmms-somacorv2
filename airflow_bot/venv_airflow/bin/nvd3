@@ -1,0 +1,7 @@
+#!/home/ubuntu/cmms-somacorv2/airflow_bot/venv_airflow/bin/python3
+import sys
+from nvd3.NVD3Chart import _main
+if __name__ == '__main__':
+    if sys.argv[0].endswith('.exe'):
+        sys.argv[0] = sys.argv[0][:-4]
+    sys.exit(_main())

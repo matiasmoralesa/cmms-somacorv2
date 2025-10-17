@@ -430,14 +430,14 @@ def mantenimiento_preventivo_dag():
     tecnicos = get_available_technicians()
     asignaciones = assign_technicians(equipos_mantenimiento, tecnicos)
     ordenes_creadas = create_maintenance_orders(asignaciones)
-    send_notifications(ordenes_creadas)
+    notificaciones = send_notifications(ordenes_creadas)
     resumen = generate_summary(equipos_mantenimiento, ordenes_creadas)
     
     # Definir dependencias
     [planes, equipos] >> ultimas_fechas
     [ultimas_fechas, planes, equipos] >> equipos_mantenimiento
     [equipos_mantenimiento, tecnicos] >> asignaciones >> ordenes_creadas
-    ordenes_creadas >> send_notifications
+    ordenes_creadas >> notificaciones
     [equipos_mantenimiento, ordenes_creadas] >> resumen
 
 

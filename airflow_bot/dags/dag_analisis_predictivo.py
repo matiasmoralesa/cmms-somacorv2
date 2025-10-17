@@ -433,13 +433,14 @@ def analisis_predictivo_dag():
     predicciones = predict_failures(metricas)
     alertas = generate_alerts(predicciones)
     ordenes_creadas = create_preventive_orders(predicciones)
-    send_telegram_notifications(alertas, ordenes_creadas)
+    notificaciones = send_telegram_notifications(alertas, ordenes_creadas)
     resumen = generate_summary_report(equipos, predicciones, alertas, ordenes_creadas)
     
     # Definir dependencias
     [equipos, ordenes] >> metricas >> predicciones >> alertas
     predicciones >> ordenes_creadas
-    [alertas, ordenes_creadas] >> send_telegram_notifications
+    alertas >> notificaciones
+    ordenes_creadas >> notificaciones
     [equipos, predicciones, alertas, ordenes_creadas] >> resumen
 
 

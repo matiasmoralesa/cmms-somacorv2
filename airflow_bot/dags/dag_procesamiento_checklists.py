@@ -422,7 +422,7 @@ Acción requerida: Revisar y corregir items críticos."""
     checklists_criticos = identify_critical_issues(checklists_analizados)
     ordenes_creadas = create_corrective_orders(checklists_criticos)
     patrones = generate_patterns_analysis(checklists_analizados)
-    send_notifications(checklists_criticos, ordenes_creadas, patrones)
+    notificaciones = send_notifications(checklists_criticos, ordenes_creadas, patrones)
     resumen = generate_summary(
         checklists,
         checklists_analizados,
@@ -434,7 +434,9 @@ Acción requerida: Revisar y corregir items críticos."""
     # Definir dependencias
     checklists >> checklists_analizados >> checklists_criticos >> ordenes_creadas
     checklists_analizados >> patrones
-    [checklists_criticos, ordenes_creadas, patrones] >> send_notifications
+    checklists_criticos >> notificaciones
+    ordenes_creadas >> notificaciones
+    patrones >> notificaciones
     [checklists, checklists_analizados, checklists_criticos, ordenes_creadas, patrones] >> resumen
 
 

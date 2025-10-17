@@ -12677,3 +12677,4 @@ Traceback (most recent call last):
     raise FieldError(
 django.core.exceptions.FieldError: Cannot resolve keyword 'nombres' into field. Choices are: departamento, idrol, idrol_id, user, user_id
 ERROR 2025-10-15 17:58:31,199 basehttp 5439 139631315527232 "GET /api/v2/usuarios/?idrol=2 HTTP/1.1" 500 116741
+INFO 2025-10-17 14:34:48,874 basehttp 5439 139631315527232 "GET /api/v2/ HTTP/1.1" 200 667
