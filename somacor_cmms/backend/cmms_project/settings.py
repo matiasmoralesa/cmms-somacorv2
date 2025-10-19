@@ -169,9 +169,11 @@ CORS_ALLOW_ALL_ORIGINS = True  # Solo para desarrollo
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://localhost:5173",
+    "http://localhost:5174",  # Puerto alternativo de Vite
     "http://127.0.0.1:3000",
     "http://127.0.0.1:5173",
-    "http://localhost:8080",  # Puerto alternativo
+    "http://127.0.0.1:5174",
+    "http://localhost:8080",
     "http://127.0.0.1:8080",
 ]
 
