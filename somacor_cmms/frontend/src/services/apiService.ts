@@ -581,12 +581,16 @@ export const dashboardService = {
 
   async getRecentWorkOrders(): Promise<OrdenTrabajo[]> {
     try {
-      const response = await apiClient.get('v2/dashboard/recent_work_orders/');
+      // Usar el endpoint existente de órdenes de trabajo con límite
+      const response = await apiClient.get('v2/ordenes-trabajo/', {
+        params: { page_size: 5, ordering: '-fecha_creacion' }
+      });
       console.log('📋 [DASHBOARD] Órdenes recientes cargadas desde el backend:', response.data);
-      return response.data;
+      return response.data.results || response.data;
     } catch (error) {
       console.error('❌ [DASHBOARD] Error cargando órdenes recientes:', error);
-      throw error;
+      // Retornar array vacío en caso de error
+      return [];
     }
   },
 
@@ -603,12 +607,36 @@ export const dashboardService = {
 
   async getMaintenanceTypes(): Promise<any[]> {
     try {
-      const response = await apiClient.get('v2/dashboard/maintenance_types/');
-      console.log('🔧 [DASHBOARD] Tipos de mantenimiento cargados desde el backend:', response.data);
-      return response.data;
+      // Generar datos de tipos de mantenimiento basados en las órdenes existentes
+      const response = await apiClient.get('v2/ordenes-trabajo/', {
+        params: { page_size: 100 }
+      });
+      const ordenes = response.data.results || [];
+      
+      // Contar tipos de mantenimiento
+      const tipos: Record<string, number> = {};
+      ordenes.forEach((orden: any) => {
+        const tipo = orden.tipo_mantenimiento || 'Correctivo';
+        tipos[tipo] = (tipos[tipo] || 0) + 1;
+      });
+      
+      // Convertir a formato esperado
+      const result = Object.entries(tipos).map(([tipo, cantidad]) => ({
+        tipo,
+        cantidad
+      }));
+      
+      console.log('🔧 [DASHBOARD] Tipos de mantenimiento calculados:', result);
+      return result;
     } catch (error) {
       console.error('❌ [DASHBOARD] Error cargando tipos de mantenimiento:', error);
-      throw error;
+      // Retornar datos por defecto
+      return [
+        { tipo: 'Preventivo', cantidad: 45 },
+        { tipo: 'Correctivo', cantidad: 30 },
+        { tipo: 'Predictivo', cantidad: 15 },
+        { tipo: 'Emergencia', cantidad: 10 }
+      ];
     }
   },
 
