@@ -86,10 +86,8 @@ export default function CreateWorkOrderForm({ isOpen, onClose, onSuccess }: Crea
       setLoading(true);
       setError(null);
 
-      const [equiposData, tiposData] = await Promise.all([
-        equiposServiceReal.getAll(),
-        tiposMantenimientoOTServiceReal.getAll()
-      ]);
+      // Cargar equipos del backend
+      const equiposData = await equiposServiceReal.getAll();
 
       // Mapear los datos del backend al formato esperado por el formulario
       const equiposMapeados = (equiposData.results || []).map((eq: any) => ({
@@ -99,13 +97,16 @@ export default function CreateWorkOrderForm({ isOpen, onClose, onSuccess }: Crea
         estado: eq.estado_nombre || 'Desconocido'
       }));
 
-      const tiposMapeados = (tiposData.results || []).map((tipo: any) => ({
-        id: tipo.idtipomantenimientoot,
-        nombre: tipo.nombretipo
-      }));
+      // Usar tipos de mantenimiento predefinidos ya que el endpoint no existe
+      const tiposPredefinidos = [
+        { id: 1, nombre: 'Preventivo' },
+        { id: 2, nombre: 'Correctivo' },
+        { id: 3, nombre: 'Predictivo' },
+        { id: 4, nombre: 'Emergencia' }
+      ];
 
       setEquipos(equiposMapeados);
-      setTiposMantenimiento(tiposMapeados);
+      setTiposMantenimiento(tiposPredefinidos);
     } catch (err) {
       console.error('Error loading form data:', err);
       setError('Error al cargar los datos del formulario');
