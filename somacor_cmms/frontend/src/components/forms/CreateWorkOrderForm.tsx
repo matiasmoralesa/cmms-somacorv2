@@ -137,13 +137,20 @@ export default function CreateWorkOrderForm({ isOpen, onClose, onSuccess }: Crea
       // Generar número de OT único basado en timestamp
       const numeroot = `OT-${Date.now()}`;
       
+      // Convertir fecha a formato YYYY-MM-DD si existe
+      let fechaFormateada = null;
+      if (formData.fechaProgramada) {
+        const fecha = new Date(formData.fechaProgramada);
+        fechaFormateada = fecha.toISOString().split('T')[0]; // Solo la parte de fecha
+      }
+      
       const workOrderData = {
         numeroot: numeroot,
         idequipo: formData.equipoId,
         idtipomantenimientoot: formData.tipoMantenimiento,
         descripcionproblemareportado: formData.descripcion,
         prioridad: formData.prioridad,
-        fechaejecucion: formData.fechaProgramada || null,
+        fechaejecucion: fechaFormateada,
         observacionesfinales: formData.observaciones,
         idsolicitante: 1, // Usuario por defecto (Admin)
         idestadoot: 1 // Estado inicial: Pendiente
