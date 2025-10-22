@@ -134,13 +134,19 @@ export default function CreateWorkOrderForm({ isOpen, onClose, onSuccess }: Crea
       setLoading(true);
       setError(null);
 
+      // Generar número de OT único basado en timestamp
+      const numeroot = `OT-${Date.now()}`;
+      
       const workOrderData = {
+        numeroot: numeroot,
         idequipo: formData.equipoId,
         idtipomantenimientoot: formData.tipoMantenimiento,
         descripcionproblemareportado: formData.descripcion,
         prioridad: formData.prioridad,
         fechaejecucion: formData.fechaProgramada || null,
-        observacionesfinales: formData.observaciones
+        observacionesfinales: formData.observaciones,
+        idsolicitante: 1, // Usuario por defecto (Admin)
+        idestadoot: 1 // Estado inicial: Pendiente
       };
 
       await ordenesTrabajoServiceReal.create(workOrderData);
