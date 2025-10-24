@@ -55,7 +55,7 @@ export const useRealtimeUpdates = ({
   const isWebSocketSupported = typeof WebSocket !== 'undefined';
   
   // TEMPORAL: Disable WebSockets to prevent infinite loop errors
-  const websocketsEnabled = false; // Set to true when WebSocket backend is ready
+  const websocketsEnabled = true; // Set to true when WebSocket backend is ready
   
   // Log WebSocket status
   useEffect(() => {
