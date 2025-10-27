@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:14-alpine
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      POSTGRES_DB: cmms_db
+      POSTGRES_USER: cmms_user
+      POSTGRES_PASSWORD: cmms_password
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cmms_user -d cmms_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./somacor_cmms/backend
+      dockerfile: Dockerfile
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py collectstatic --noinput &&
+             gunicorn somacor_cmms.wsgi:application --bind 0.0.0.0:8000"
+    volumes:
+      - ./somacor_cmms/backend:/app/somacor_cmms/backend
+    ports:
+      - "8000:8000"
+    environment:
+      # Configuración de la base de datos para Django
+      DATABASE_URL: postgres://cmms_user:cmms_password@db:5432/cmms_db
+      # Otras variables de entorno de Django (ej. SECRET_KEY, DEBUG)
+      SECRET_KEY: 'your-secret-key' # Reemplazar con una clave segura
+      DEBUG: 'True'
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: always
+
+  telegram_bot:
+    build:
+      context: ./telegram_integration
+      dockerfile: Dockerfile
+    command: python bot_v2.py
+    volumes:
+      - ./telegram_integration:/app/telegram_integration
+    environment:
+      # El bot se conecta al backend a través del nombre del servicio 'backend'
+      API_BASE_URL: http://backend:8000/
+      # El token del bot de Telegram se puede inyectar aquí o en un archivo .env
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      API_TOKEN: ${API_TOKEN} # Token de autenticación para la API del CMMS
+    depends_on:
+      backend:
+        condition: service_started
+    restart: always
+
+volumes:
+  postgres_data:
+
