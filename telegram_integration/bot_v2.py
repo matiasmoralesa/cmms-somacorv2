@@ -20,18 +20,18 @@ from loguru import logger
 # Agregar directorios al path
 sys.path.insert(0, str(Path(__file__).parent.parent / 'airflow_bot'))
 from config.airflow_config import TelegramConfig, LoggingConfig, CMSSConfig
-from scripts.cmms_api_client import CMSSAPIClient
 
 # Importar sistema de usuarios y decoradores
-from user_manager import user_manager, UserRole
+from user_manager import user_manager, UserRole # user_manager es la instancia global
+from cmms_api_client import CMSSAPIClient, CMMS_API_CLIENT
 from decorators import (
-    require_admin,
-    require_supervisor,
-    require_tecnico,
-    require_operador,
-    register_user_if_new,
-    log_command
-)
+            require_admin,
+            require_supervisor,
+            require_tecnico,
+            require_operador,
+            register_user_if_new,
+            log_command
+        )
 
 # Configurar logging
 logger.add(
@@ -54,7 +54,7 @@ class TelegramBotV2:
             token: Token del bot de Telegram
         """
         self.token = token or TelegramConfig.BOT_TOKEN
-        self.cmms_client = CMSSAPIClient()
+        self.cmms_client = CMMS_API_CLIENT # Usar la instancia global del cliente
         self.application = None
         self.backend_available = False
         
@@ -63,45 +63,14 @@ class TelegramBotV2:
     async def check_backend(self) -> bool:
         """Verificar si el backend está disponible"""
         try:
-            response = self.cmms_client.get("/health/", timeout=3)
-            self.backend_available = response.get("status") == "ok"
-            return self.backend_available
-        except:
+            # Usar un endpoint simple como get_equipos o get_dashboard_stats para verificar la conexión
+            self.cmms_client.get_dashboard_stats()
+            self.backend_available = True
+            return True
+        except Exception as e:
+            logger.error(f"Backend no disponible: {e}")
             self.backend_available = False
             return False
-    
-    def get_mock_data(self, data_type: str) -> Dict:
-        """Obtener datos simulados cuando el backend no está disponible"""
-        mock_data = {
-            "status": {
-                "equipos_activos": 45,
-                "ordenes_pendientes": 12,
-                "ordenes_en_progreso": 8,
-                "ordenes_completadas_hoy": 5,
-                "alertas_criticas": 2,
-                "sistema": "Modo Offline (Backend no disponible)"
-            },
-            "equipos": [
-                {"id": 1, "codigo": "CAM-001", "nombre": "Camión Volvo FH16", "estado": "Activo"},
-                {"id": 2, "codigo": "RET-005", "nombre": "Retroexcavadora CAT 420", "estado": "Activo"},
-                {"id": 3, "codigo": "CAR-003", "nombre": "Cargador Frontal", "estado": "En Mantenimiento"},
-            ],
-            "alertas": {
-                "criticas": [
-                    {"equipo": "CAM-001", "probabilidad": 85, "mensaje": "Alta probabilidad de falla"},
-                    {"equipo": "RET-005", "mensaje": "MTBF por debajo del umbral"}
-                ],
-                "advertencias": [
-                    {"equipo": "CAR-003", "mensaje": "Mantenimiento preventivo próximo"},
-                    {"equipo": "SUP-002", "mensaje": "Checklist con items fallidos"}
-                ]
-            },
-            "ordenes": [
-                {"id": 1, "codigo": "OT-2025-001", "equipo": "CAM-001", "tipo": "Correctivo", "estado": "Pendiente", "prioridad": "Alta"},
-                {"id": 2, "codigo": "OT-2025-002", "equipo": "RET-005", "tipo": "Preventivo", "estado": "En Progreso", "prioridad": "Media"},
-            ]
-        }
-        return mock_data.get(data_type, {})
     
     @register_user_if_new
     @log_command
@@ -109,7 +78,7 @@ class TelegramBotV2:
         """Comando /start - Mensaje de bienvenida"""
         user = update.effective_user
         user_role = user_manager.get_user_role(user.id)
-        role_name = user_manager.get_role_name(user_role)
+        role_name = user_manager.get_role_name(user_role) # La función get_role_name sigue existiendo en user_manager.py
         
         welcome_message = f"""
 🤖 Bienvenido al Bot Asistente CMMS Somacor
@@ -178,10 +147,13 @@ Rol: {role_name}
         if backend_ok:
             try:
                 stats = self.cmms_client.get_dashboard_stats()
-            except:
-                stats = self.get_mock_data("status")
+            except Exception as e:
+                logger.error(f"Error al obtener estadísticas del dashboard: {e}")
+                await update.message.reply_text("❌ Error al conectar con el backend o al obtener datos. Inténtalo más tarde.")
+                return
         else:
-            stats = self.get_mock_data("status")
+            await update.message.reply_text("❌ Backend no disponible. Inténtalo más tarde.")
+            return
         
         status_message = f"""
 📊 ESTADO DEL SISTEMA CMMS
@@ -212,10 +184,13 @@ Rol: {role_name}
         if backend_ok:
             try:
                 equipos = self.cmms_client.get_equipos()
-            except:
-                equipos = self.get_mock_data("equipos")
+            except Exception as e:
+                logger.error(f"Error al obtener lista de equipos: {e}")
+                await update.message.reply_text("❌ Error al conectar con el backend o al obtener datos. Inténtalo más tarde.")
+                return
         else:
-            equipos = self.get_mock_data("equipos")
+            await update.message.reply_text("❌ Backend no disponible. Inténtalo más tarde.")
+            return
         
         if not equipos:
             await update.message.reply_text("❌ No se encontraron equipos")
@@ -243,11 +218,18 @@ Rol: {role_name}
         
         if backend_ok:
             try:
+                # Asumiendo que get_alertas existe o se implementará
                 alertas = self.cmms_client.get_alertas()
-            except:
-                alertas = self.get_mock_data("alertas")
+            except AttributeError:
+                logger.warning("Método get_alertas no implementado en el cliente API. Usando estructura vacía.")
+                alertas = {"criticas": [], "advertencias": []}
+            except Exception as e:
+                logger.error(f"Error al obtener lista de alertas: {e}")
+                await update.message.reply_text("❌ Error al conectar con el backend o al obtener datos. Inténtalo más tarde.")
+                return
         else:
-            alertas = self.get_mock_data("alertas")
+            await update.message.reply_text("❌ Backend no disponible. Inténtalo más tarde.")
+            return
         
         alertas_message = "⚠️ ALERTAS ACTIVAS\n\n"
         
@@ -291,14 +273,30 @@ Rol: {role_name}
         if backend_ok:
             try:
                 ordenes = self.cmms_client.get_ordenes_trabajo()
-            except:
-                ordenes = self.get_mock_data("ordenes")
+            except Exception as e:
+                logger.error(f"Error al obtener lista de órdenes de trabajo: {e}")
+                await update.message.reply_text("❌ Error al conectar con el backend o al obtener datos. Inténtalo más tarde.")
+                return
         else:
-            ordenes = self.get_mock_data("ordenes")
-        
-        if not ordenes:
-            await update.message.reply_text("❌ No se encontraron órdenes de trabajo")
+            await update.message.reply_text("❌ Backend no disponible. Inténtalo más tarde.")
             return
+        
+        # Filtrar órdenes asignadas al técnico
+        user_data = user_manager.get_user(update.effective_user.id)
+        if not user_data or not user_data.get('idusuario'):
+            await update.message.reply_text("❌ No se pudo obtener tu ID de usuario del CMMS. No se pueden mostrar órdenes asignadas.")
+            return
+            
+        tecnico_id = user_data.get('idusuario')
+        
+        # Asumiendo que el campo de asignación en la OT es 'idtecnico'
+        ordenes_asignadas = [ot for ot in ordenes if ot.get('idtecnico') == tecnico_id]
+        
+        if not ordenes_asignadas:
+            await update.message.reply_text("❌ No tienes órdenes de trabajo asignadas")
+            return
+            
+        ordenes = ordenes_asignadas
         
         ordenes_message = f"📝 ÓRDENES DE TRABAJO\n\nTotal: {len(ordenes)}\n\n"
         
