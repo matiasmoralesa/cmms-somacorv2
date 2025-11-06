@@ -173,8 +173,26 @@ const LoginView: React.FC = () => {
           </button>
         </form>
 
+        {/* Credenciales de prueba */}
+        <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-md">
+          <h3 className="text-sm font-medium text-blue-800 mb-2">Credenciales de Prueba:</h3>
+          <div className="text-xs text-blue-700 space-y-1">
+            <p><strong>Usuario:</strong> admin</p>
+            <p><strong>Contraseña:</strong> admin123</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setFormData({ username: 'admin', password: 'admin123' });
+            }}
+            className="mt-2 text-xs text-blue-600 hover:text-blue-800 underline"
+          >
+            Usar credenciales de prueba
+          </button>
+        </div>
+
         {/* Información adicional */}
-        <div className="mt-6 text-center">
+        <div className="mt-4 text-center">
           <p className="text-xs text-gray-500">
             ¿Problemas para acceder? Contacte al administrador del sistema.
           </p>

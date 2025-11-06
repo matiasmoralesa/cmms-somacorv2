@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Limpiar Almacenamiento - CMMS Somacor</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .btn {
+            background: #dc3545;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px;
+            transition: background 0.3s;
+        }
+        .btn:hover {
+            background: #c82333;
+        }
+        .btn-primary {
+            background: #007bff;
+        }
+        .btn-primary:hover {
+            background: #0056b3;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border: 1px solid #c3e6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧹 Limpiar Almacenamiento</h1>
+        
+        <p>Esta página te permite limpiar todos los datos almacenados en el navegador para forzar que aparezca la página de login.</p>
+        
+        <button class="btn" onclick="clearStorage()">
+            🗑️ Limpiar Todo y Ir al Login
+        </button>
+        
+        <button class="btn btn-primary" onclick="goToLogin()">
+            🔑 Ir Directamente al Login
+        </button>
+        
+        <div id="message"></div>
+        
+        <div style="margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px;">
+            <h3>Credenciales de Acceso:</h3>
+            <p><strong>Usuario:</strong> admin</p>
+            <p><strong>Contraseña:</strong> admin123</p>
+        </div>
+    </div>
+
+    <script>
+        function clearStorage() {
+            try {
+                localStorage.clear();
+                sessionStorage.clear();
+                
+                document.getElementById('message').innerHTML = 
+                    '<div class="success">✅ Almacenamiento limpiado correctamente. Redirigiendo al login...</div>';
+                
+                setTimeout(() => {
+                    window.location.href = '/login';
+                }, 2000);
+                
+            } catch (error) {
+                document.getElementById('message').innerHTML = 
+                    '<div style="background: #f8d7da; color: #721c24; padding: 15px; border-radius: 8px;">❌ Error: ' + error.message + '</div>';
+            }
+        }
+        
+        function goToLogin() {
+            window.location.href = '/login';
+        }
+        
+        // Mostrar información actual del almacenamiento
+        window.onload = function() {
+            const token = localStorage.getItem('authToken');
+            const userInfo = localStorage.getItem('userInfo');
+            
+            if (token || userInfo) {
+                document.getElementById('message').innerHTML = 
+                    '<div style="background: #fff3cd; color: #856404; padding: 15px; border-radius: 8px; margin: 15px 0;">⚠️ Hay datos de sesión almacenados. Usa "Limpiar Todo" para forzar el login.</div>';
+            } else {
+                document.getElementById('message').innerHTML = 
+                    '<div class="success">✅ No hay datos de sesión. Puedes ir directamente al login.</div>';
+            }
+        }
+    </script>
+</body>
+</html>

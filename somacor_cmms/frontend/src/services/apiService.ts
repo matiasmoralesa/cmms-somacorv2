@@ -530,12 +530,12 @@ export const checklistService = {
   answers: new BaseService<ChecklistAnswer>('checklist-answers/'),
   
   async getTemplatesPorEquipo(equipoId: number): Promise<ChecklistTemplate[]> {
-    const response = await apiClient.get(`checklist-workflow/templates-por-equipo/${equipoId}/`);
+    const response = await apiClient.get(`v2/checklist-workflow/templates-por-equipo/${equipoId}/`);
     return response.data;
   },
 
   async completarChecklist(data: ChecklistFormData): Promise<ChecklistCompletionResponse> {
-    const response = await apiClient.post('checklist-workflow/completar-checklist/', data);
+    const response = await apiClient.post('v2/checklist-workflow/completar-checklist/', data);
     return response.data;
   },
 
@@ -544,7 +544,7 @@ export const checklistService = {
     if (fechaInicio) params.append('fecha_inicio', fechaInicio);
     if (fechaFin) params.append('fecha_fin', fechaFin);
     
-    const response = await apiClient.get(`checklist-workflow/historial-equipo/${equipoId}/?${params}`);
+    const response = await apiClient.get(`v2/checklist-workflow/historial-equipo/${equipoId}/?${params}`);
     return response.data;
   },
 
@@ -553,7 +553,7 @@ export const checklistService = {
     if (fechaInicio) params.append('fecha_inicio', fechaInicio);
     if (fechaFin) params.append('fecha_fin', fechaFin);
     
-    const response = await apiClient.get(`checklist-workflow/reportes/conformidad/?${params}`);
+    const response = await apiClient.get(`v2/checklist-workflow/reportes/conformidad/?${params}`);
     return response.data;
   },
 
@@ -562,7 +562,7 @@ export const checklistService = {
     if (fechaInicio) params.append('fecha_inicio', fechaInicio);
     if (fechaFin) params.append('fecha_fin', fechaFin);
     
-    const response = await apiClient.get(`checklist-workflow/elementos-mas-fallidos/?${params}`);
+    const response = await apiClient.get(`v2/checklist-workflow/elementos-mas-fallidos/?${params}`);
     return response.data;
   }
 };
@@ -581,12 +581,11 @@ export const dashboardService = {
 
   async getRecentWorkOrders(): Promise<OrdenTrabajo[]> {
     try {
-      // Usar el endpoint existente de órdenes de trabajo con límite
-      const response = await apiClient.get('v2/ordenes-trabajo/', {
-        params: { page_size: 5, ordering: '-fecha_creacion' }
+      const response = await apiClient.get('v2/dashboard/recent_work_orders/', {
+        params: { limit: 5 }
       });
       console.log('📋 [DASHBOARD] Órdenes recientes cargadas desde el backend:', response.data);
-      return response.data.results || response.data;
+      return response.data;
     } catch (error) {
       console.error('❌ [DASHBOARD] Error cargando órdenes recientes:', error);
       // Retornar array vacío en caso de error
@@ -607,27 +606,9 @@ export const dashboardService = {
 
   async getMaintenanceTypes(): Promise<any[]> {
     try {
-      // Generar datos de tipos de mantenimiento basados en las órdenes existentes
-      const response = await apiClient.get('v2/ordenes-trabajo/', {
-        params: { page_size: 100 }
-      });
-      const ordenes = response.data.results || [];
-      
-      // Contar tipos de mantenimiento
-      const tipos: Record<string, number> = {};
-      ordenes.forEach((orden: any) => {
-        const tipo = orden.tipo_mantenimiento || 'Correctivo';
-        tipos[tipo] = (tipos[tipo] || 0) + 1;
-      });
-      
-      // Convertir a formato esperado
-      const result = Object.entries(tipos).map(([tipo, cantidad]) => ({
-        tipo,
-        cantidad
-      }));
-      
-      console.log('🔧 [DASHBOARD] Tipos de mantenimiento calculados:', result);
-      return result;
+      const response = await apiClient.get('v2/dashboard/maintenance_types/');
+      console.log('🔧 [DASHBOARD] Tipos de mantenimiento cargados desde el backend:', response.data);
+      return response.data;
     } catch (error) {
       console.error('❌ [DASHBOARD] Error cargando tipos de mantenimiento:', error);
       // Retornar datos por defecto

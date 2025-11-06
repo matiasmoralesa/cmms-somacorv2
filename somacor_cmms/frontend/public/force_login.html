@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Redirigiendo al Login - CMMS Somacor</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+        }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #007bff;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .btn {
+            background: #007bff;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔄 Preparando el Sistema</h1>
+        <div class="spinner"></div>
+        <p>Limpiando datos antiguos y redirigiendo al login...</p>
+        
+        <div id="status"></div>
+        
+        <div style="margin-top: 30px;">
+            <a href="/login" class="btn">🔑 Ir al Login Manualmente</a>
+        </div>
+        
+        <div style="margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px;">
+            <h3>Credenciales de Acceso:</h3>
+            <p><strong>Usuario:</strong> admin</p>
+            <p><strong>Contraseña:</strong> admin123</p>
+        </div>
+    </div>
+
+    <script>
+        function clearAndRedirect() {
+            try {
+                // Limpiar todo el almacenamiento
+                localStorage.clear();
+                sessionStorage.clear();
+                
+                // Limpiar cookies si las hay
+                document.cookie.split(";").forEach(function(c) { 
+                    document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+                });
+                
+                document.getElementById('status').innerHTML = 
+                    '<div style="color: green; margin: 10px 0;">✅ Datos limpiados correctamente</div>';
+                
+                setTimeout(() => {
+                    document.getElementById('status').innerHTML = 
+                        '<div style="color: blue; margin: 10px 0;">🔄 Redirigiendo al login...</div>';
+                    
+                    setTimeout(() => {
+                        window.location.href = '/login';
+                    }, 1000);
+                }, 2000);
+                
+            } catch (error) {
+                document.getElementById('status').innerHTML = 
+                    '<div style="color: red; margin: 10px 0;">❌ Error: ' + error.message + '</div>';
+                
+                setTimeout(() => {
+                    window.location.href = '/login';
+                }, 3000);
+            }
+        }
+        
+        // Ejecutar automáticamente al cargar la página
+        window.onload = function() {
+            clearAndRedirect();
+        }
+    </script>
+</body>
+</html>

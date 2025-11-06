@@ -34,37 +34,23 @@ interface AuthContextType {
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Objeto de usuario simulado para desarrollo sin autenticación.
-const mockUser: User = {
-    id: 0,
-    username: 'Usuario Local',
-    email: 'local@user.com',
-    first_name: 'Usuario',
-    last_name: 'Local',
-    usuarios: {
-        idrol: 1, // Se asume que el rol 1 es 'Administrador' o un rol con acceso total.
-        nombrerol: 'Administrador',
-        idespecialidad: null,
-        telefono: null,
-        cargo: 'Developer'
-    }
-};
+// Eliminado el mockUser para forzar autenticación real
 
 interface AuthProviderProps {
     children: ReactNode;
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-    // El estado del usuario se inicializa con el usuario simulado.
-    const [user, setUser] = useState<User | null>(mockUser);
+    // El estado del usuario se inicializa como null para forzar autenticación real
+    const [user, setUser] = useState<User | null>(null);
     const [token, setToken] = useState<string | null>(localStorage.getItem('authToken'));
-    // isLoading se establece en 'false' para evitar la pantalla de carga.
-    const [isLoading, setIsLoading] = useState(false);
+    // isLoading se establece en 'true' inicialmente para verificar autenticación
+    const [isLoading, setIsLoading] = useState(true);
 
-    // useEffect se mantiene para manejar la restauración de una sesión real si existiera.
+    // useEffect para verificar autenticación al cargar la aplicación
     useEffect(() => {
         const storedToken = localStorage.getItem('authToken');
-        const storedUser = localStorage.getItem('user');
+        const storedUser = localStorage.getItem('userInfo');
 
         if (storedToken && storedUser) {
             try {
@@ -74,32 +60,45 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 setToken(storedToken);
                 apiClient.defaults.headers.common['Authorization'] = `Token ${storedToken}`;
             } catch (error) {
-                // Si falla la carga, se usan los valores por defecto (mockUser).
-                setUser(mockUser);
+                // Si falla la carga, limpiar datos y forzar login
+                localStorage.removeItem('authToken');
+                localStorage.removeItem('userInfo');
+                localStorage.removeItem('userRole');
+                setUser(null);
                 setToken(null);
             }
+        } else {
+            // No hay datos de autenticación, asegurar que esté limpio
+            setUser(null);
+            setToken(null);
         }
         setIsLoading(false);
     }, []);
 
-    // La función de login sigue funcionando para permitir iniciar sesión si se desea.
+    // Función de login que maneja la autenticación real
     const login = async (username: string, password: string) => {
-        const response = await apiClient.post<{ token: string; user: User }>('/login/', { username, password });
-        const { token: newToken, user: newUser } = response.data;
+        const response = await apiClient.post<{ token: string; user: User; rol: any }>('/login/', { username, password });
+        const { token: newToken, user: newUser, rol } = response.data;
+        
+        // Guardar datos en localStorage
         localStorage.setItem('authToken', newToken);
-        localStorage.setItem('user', JSON.stringify(newUser));
+        localStorage.setItem('userInfo', JSON.stringify(newUser));
+        localStorage.setItem('userRole', JSON.stringify(rol));
+        
+        // Actualizar estado
         setToken(newToken);
         setUser(newUser);
         apiClient.defaults.headers.common['Authorization'] = `Token ${newToken}`;
     };
 
-    // Al cerrar sesión, se vuelve al usuario simulado.
+    // Al cerrar sesión, limpiar todo y redireccionar al login
     const logout = () => {
         apiClient.post('/logout/').catch(err => console.error("Logout API call failed", err));
         localStorage.removeItem('authToken');
-        localStorage.removeItem('user');
+        localStorage.removeItem('userInfo');
+        localStorage.removeItem('userRole');
         setToken(null);
-        setUser(mockUser);
+        setUser(null);
         delete apiClient.defaults.headers.common['Authorization'];
     };
 

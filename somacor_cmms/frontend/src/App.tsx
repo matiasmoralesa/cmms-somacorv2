@@ -33,6 +33,7 @@ const TecnicosView = React.lazy(() => import('./pages/TecnicosView'));
 // Componentes de autenticación
 const LoginView = React.lazy(() => import('./pages/LoginView'));
 const AccesoDenegadoView = React.lazy(() => import('./pages/AccesoDenegadoView'));
+const RedirectToLogin = React.lazy(() => import('./pages/RedirectToLogin'));
 
 function App() {
   return (
@@ -70,7 +71,9 @@ function App() {
           <Route 
             index 
             element={
-              isAuthenticated() ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />
+              <Suspense fallback={<LoadingSpinner text="Verificando autenticación..." />}>
+                <RedirectToLogin />
+              </Suspense>
             } 
           />
           

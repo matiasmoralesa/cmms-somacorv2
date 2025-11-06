@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configurar Token - CMMS Somacor</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            max-width: 600px;
+            width: 100%;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 28px;
+        }
+        .step {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 4px solid #007bff;
+        }
+        .step h3 {
+            margin-top: 0;
+            color: #007bff;
+        }
+        .token-box {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            word-break: break-all;
+            margin: 10px 0;
+            position: relative;
+        }
+        .copy-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .copy-btn:hover {
+            background: #0056b3;
+        }
+        .big-btn {
+            background: #28a745;
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 100%;
+            font-size: 18px;
+            margin: 20px 0;
+            transition: background 0.3s;
+        }
+        .big-btn:hover {
+            background: #218838;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border: 1px solid #c3e6cb;
+        }
+        .warning {
+            background: #fff3cd;
+            color: #856404;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border: 1px solid #ffeaa7;
+        }
+        .link-btn {
+            display: inline-block;
+            background: #007bff;
+            color: white;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 6px;
+            margin: 10px 5px;
+            transition: background 0.3s;
+        }
+        .link-btn:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔑 Configuración de Token CMMS</h1>
+        
+        <div class="warning">
+            <strong>⚠️ IMPORTANTE:</strong> Si ves "Acceso Denegado" en el sistema, necesitas configurar el token de autenticación.
+        </div>
+
+        <div class="step">
+            <h3>📋 Paso 1: Copia el Token</h3>
+            <p>Este es tu token de autenticación:</p>
+            <div class="token-box">
+                806c849de0c1e165d3bc268f96224ffd94e2a2b8
+                <button class="copy-btn" onclick="copyToken()">Copiar</button>
+            </div>
+        </div>
+
+        <div class="step">
+            <h3>⚙️ Paso 2: Configurar Automáticamente</h3>
+            <p>Haz clic en este botón para configurar el token automáticamente:</p>
+            <button class="big-btn" onclick="setTokenAndRedirect()">
+                🚀 Configurar Token y Ir al Sistema
+            </button>
+        </div>
+
+        <div class="step">
+            <h3>🔧 Paso 3: Configuración Manual (Alternativa)</h3>
+            <p>Si el botón anterior no funciona, sigue estos pasos:</p>
+            <ol>
+                <li>Ve a <a href="http://localhost:5173" target="_blank">http://localhost:5173</a></li>
+                <li>Presiona <strong>F12</strong> para abrir las herramientas de desarrollador</li>
+                <li>Ve a la pestaña <strong>Console</strong></li>
+                <li>Pega este comando y presiona Enter:</li>
+            </ol>
+            <div class="token-box">
+                localStorage.setItem('authToken', '806c849de0c1e165d3bc268f96224ffd94e2a2b8');
+                <button class="copy-btn" onclick="copyCommand()">Copiar</button>
+            </div>
+            <p>5. Recarga la página (F5)</p>
+        </div>
+
+        <div id="message"></div>
+
+        <div style="text-align: center; margin-top: 30px;">
+            <a href="http://localhost:5173" class="link-btn" target="_blank">🌐 Ir al Sistema CMMS</a>
+            <a href="http://localhost:8000/admin" class="link-btn" target="_blank">👤 Admin Django</a>
+        </div>
+    </div>
+
+    <script>
+        function copyToken() {
+            navigator.clipboard.writeText('806c849de0c1e165d3bc268f96224ffd94e2a2b8').then(() => {
+                showMessage('✅ Token copiado al portapapeles', 'success');
+            });
+        }
+
+        function copyCommand() {
+            navigator.clipboard.writeText("localStorage.setItem('authToken', '806c849de0c1e165d3bc268f96224ffd94e2a2b8');").then(() => {
+                showMessage('✅ Comando copiado al portapapeles', 'success');
+            });
+        }
+
+        function setTokenAndRedirect() {
+            try {
+                localStorage.setItem('authToken', '806c849de0c1e165d3bc268f96224ffd94e2a2b8');
+                showMessage('✅ Token configurado correctamente. Redirigiendo...', 'success');
+                
+                setTimeout(() => {
+                    window.open('http://localhost:5173', '_blank');
+                }, 2000);
+                
+            } catch (error) {
+                showMessage('❌ Error al configurar el token: ' + error.message, 'error');
+            }
+        }
+
+        function showMessage(text, type) {
+            const messageDiv = document.getElementById('message');
+            const className = type === 'success' ? 'success' : 'warning';
+            messageDiv.innerHTML = `<div class="${className}">${text}</div>`;
+        }
+
+        // Verificar si ya hay un token configurado
+        window.onload = function() {
+            const existingToken = localStorage.getItem('authToken');
+            if (existingToken) {
+                showMessage('✅ Ya tienes un token configurado. Puedes ir directamente al sistema.', 'success');
+            }
+        }
+    </script>
+</body>
+</html>

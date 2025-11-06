@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import MultipleImageUpload from '@/components/MultipleImageUpload';
-import { apiClient } from '@/api/apiClient';
+import apiClient from '@/api/apiClient';
 
 // =================================================================================
 // TIPOS DE DATOS
@@ -88,7 +88,7 @@ const ChecklistDiarioView: React.FC = () => {
     const fetchEquipos = async () => {
       setIsLoading(true);
       try {
-        const response = await apiClient.get('/equipos/');
+        const response = await apiClient.get('v2/equipos/');
         setEquipos(response.data.results || response.data);
       } catch (err) {
         setError('Error al cargar la lista de equipos. Por favor, intente de nuevo.');
@@ -112,7 +112,7 @@ const ChecklistDiarioView: React.FC = () => {
       setSubmitSuccess(null);
       setTemplate(null);
       try {
-        const response = await apiClient.get(`/checklist-workflow/templates-por-equipo/${selectedEquipoId}/`);
+        const response = await apiClient.get(`v2/checklist-workflow/templates-por-equipo/${selectedEquipoId}/`);
         const templateData = response.data.templates?.[0];
         if (templateData) {
           setTemplate(templateData);
@@ -214,7 +214,7 @@ const ChecklistDiarioView: React.FC = () => {
     };
     
     try {
-      await apiClient.post('/checklist-workflow/completar-checklist/', payload);
+      await apiClient.post('v2/checklist-workflow/completar-checklist/', payload);
       setSubmitSuccess('Checklist enviado con éxito.');
       setSelectedEquipoId('');
     } catch (err: any) {

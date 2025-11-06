@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Checklist API - CMMS Somacor</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .btn {
+            background: #007bff;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+            transition: background 0.3s;
+        }
+        .btn:hover {
+            background: #0056b3;
+        }
+        .result {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        select {
+            padding: 8px;
+            margin: 10px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Test Checklist API</h1>
+        
+        <div>
+            <button class="btn" onclick="testEquipos()">🚜 Probar Equipos</button>
+            <button class="btn" onclick="testUsuarios()">👥 Probar Usuarios</button>
+            <button class="btn" onclick="testTemplates()">✅ Probar Templates</button>
+        </div>
+        
+        <div>
+            <label>Seleccionar Equipo:</label>
+            <select id="equipoSelect">
+                <option value="">Seleccionar...</option>
+            </select>
+            <button class="btn" onclick="testTemplatesPorEquipo()">📋 Obtener Checklist</button>
+        </div>
+        
+        <div id="result"></div>
+    </div>
+
+    <script>
+        const token = '806c849de0c1e165d3bc268f96224ffd94e2a2b8';
+        const baseURL = 'http://localhost:8000/api/v2';
+        
+        function showResult(data, isError = false) {
+            const resultDiv = document.getElementById('result');
+            const className = isError ? 'error' : 'success';
+            resultDiv.innerHTML = `<div class="result ${className}">${JSON.stringify(data, null, 2)}</div>`;
+        }
+        
+        async function testEquipos() {
+            try {
+                const response = await fetch(`${baseURL}/equipos/`, {
+                    headers: {
+                        'Authorization': `Token ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showResult({
+                        status: 'SUCCESS',
+                        count: data.count || data.length,
+                        first_5: (data.results || data).slice(0, 5)
+                    });
+                    
+                    // Llenar el select de equipos
+                    const select = document.getElementById('equipoSelect');
+                    select.innerHTML = '<option value="">Seleccionar...</option>';
+                    (data.results || data).slice(0, 10).forEach(equipo => {
+                        const option = document.createElement('option');
+                        option.value = equipo.idequipo;
+                        option.textContent = `${equipo.nombreequipo} (${equipo.codigointerno})`;
+                        select.appendChild(option);
+                    });
+                } else {
+                    showResult({status: 'ERROR', error: data}, true);
+                }
+            } catch (error) {
+                showResult({status: 'ERROR', error: error.message}, true);
+            }
+        }
+        
+        async function testUsuarios() {
+            try {
+                const response = await fetch(`${baseURL}/usuarios/`, {
+                    headers: {
+                        'Authorization': `Token ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showResult({
+                        status: 'SUCCESS',
+                        count: data.count || data.length,
+                        first_5: (data.results || data).slice(0, 5)
+                    });
+                } else {
+                    showResult({status: 'ERROR', error: data}, true);
+                }
+            } catch (error) {
+                showResult({status: 'ERROR', error: error.message}, true);
+            }
+        }
+        
+        async function testTemplates() {
+            try {
+                const response = await fetch(`${baseURL}/checklist-templates/`, {
+                    headers: {
+                        'Authorization': `Token ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showResult({
+                        status: 'SUCCESS',
+                        count: data.count || data.length,
+                        templates: data.results || data
+                    });
+                } else {
+                    showResult({status: 'ERROR', error: data}, true);
+                }
+            } catch (error) {
+                showResult({status: 'ERROR', error: error.message}, true);
+            }
+        }
+        
+        async function testTemplatesPorEquipo() {
+            const equipoId = document.getElementById('equipoSelect').value;
+            if (!equipoId) {
+                alert('Selecciona un equipo primero');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${baseURL}/checklist-workflow/templates-por-equipo/${equipoId}/`, {
+                    headers: {
+                        'Authorization': `Token ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showResult({
+                        status: 'SUCCESS',
+                        equipo: data.equipo,
+                        templates_count: data.templates.length,
+                        templates: data.templates
+                    });
+                } else {
+                    showResult({status: 'ERROR', error: data}, true);
+                }
+            } catch (error) {
+                showResult({status: 'ERROR', error: error.message}, true);
+            }
+        }
+        
+        // Cargar equipos al inicio
+        window.onload = function() {
+            testEquipos();
+        }
+    </script>
+</body>
+</html>
