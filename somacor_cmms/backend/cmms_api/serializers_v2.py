@@ -9,7 +9,7 @@ from .models import (
     EstadosOrdenTrabajo, OrdenesTrabajo, ActividadesOrdenTrabajo,
     TiposMantenimientoOT, TiposTarea, TareasEstandar, PlanesMantenimiento,
     DetallesPlanMantenimiento, Agendas, ChecklistTemplate, ChecklistCategory,
-    ChecklistItem, ChecklistInstance, ChecklistAnswer, EvidenciaOT
+    ChecklistItem, ChecklistInstance, ChecklistAnswer, ChecklistImage, EvidenciaOT
 )
 from datetime import datetime, date
 
@@ -396,8 +396,8 @@ class EquipoSerializer(serializers.ModelSerializer):
         model = Equipos
         fields = [
             'idequipo', 'codigointerno', 'nombreequipo', 'marca', 'modelo',
-            'numeroserie', 'aniofabricacion', 'tipoequipo', 'estadoactual',
-            'faena', 'horometro', 'fechacreacion', 'observaciones',
+            'anio', 'patente', 'tipoequipo', 'estadoactual',
+            'faena', 'activo',
             # Campos calculados
             'tipo_nombre', 'estado_nombre', 'faena_nombre',
             # Campos para escritura
@@ -703,9 +703,9 @@ class EquipoFormSerializer(serializers.ModelSerializer):
     class Meta:
         model = Equipos
         fields = [
-            'codigointerno', 'nombreequipo', 'marca', 'modelo', 'numeroserie',
-            'aniofabricacion', 'idtipoequipo', 'idestadoactual', 'idfaena',
-            'horometro', 'observaciones'
+            'codigointerno', 'nombreequipo', 'marca', 'modelo', 'anio',
+            'patente', 'idtipoequipo', 'idestadoactual', 'idfaenaactual',
+            'activo'
         ]
 
 

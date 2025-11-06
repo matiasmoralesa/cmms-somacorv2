@@ -31,8 +31,29 @@ class ChecklistWorkflowViewSet(viewsets.ViewSet):
             ).prefetch_related('categories__items')
             
             return Response({
-                'equipo': EquipoSerializer(equipo).data,
-                'templates': ChecklistTemplateSerializer(templates, many=True).data
+                'equipo': {
+                    'idequipo': equipo.idequipo,
+                    'nombreequipo': equipo.nombreequipo,
+                    'codigointerno': equipo.codigointerno,
+                    'tipo_equipo': equipo.idtipoequipo.nombretipo
+                },
+                'templates': [{
+                    'id_template': t.id_template,
+                    'nombre': t.nombre,
+                    'tipo_equipo_nombre': t.tipo_equipo.nombretipo,
+                    'activo': t.activo,
+                    'categories': [{
+                        'id_category': cat.id_category,
+                        'nombre': cat.nombre,
+                        'orden': cat.orden,
+                        'items': [{
+                            'id_item': item.id_item,
+                            'texto': item.texto,
+                            'es_critico': item.es_critico,
+                            'orden': item.orden
+                        } for item in cat.items.all().order_by('orden')]
+                    } for cat in t.categories.all().order_by('orden')]
+                } for t in templates]
             })
             
         except Equipos.DoesNotExist:
@@ -205,7 +226,12 @@ class ChecklistWorkflowViewSet(viewsets.ViewSet):
             ).distinct().count()
             
             return Response({
-                'equipo': EquipoSerializer(equipo).data,
+                'equipo': {
+                    'idequipo': equipo.idequipo,
+                    'nombreequipo': equipo.nombreequipo,
+                    'codigointerno': equipo.codigointerno,
+                    'tipo_equipo': equipo.idtipoequipo.nombretipo
+                },
                 'estadisticas': {
                     'total_checklists': total_checklists,
                     'checklists_con_fallas': checklists_con_fallas,
