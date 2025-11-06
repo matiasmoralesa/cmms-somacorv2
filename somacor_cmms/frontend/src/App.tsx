@@ -26,6 +26,7 @@ const PlanesMantenimientoView = React.lazy(() => import('./pages/PlanesMantenimi
 const OrdenesTrabajoView = React.lazy(() => import('./pages/OrdenesTrabajoView'));
 const EjecucionOTView = React.lazy(() => import('./pages/EjecucionOTView'));
 const ChecklistView = React.lazy(() => import('./pages/ChecklistView'));
+const ChecklistDiarioView = React.lazy(() => import('./pages/ChecklistDiarioView'));
 const InventarioView = React.lazy(() => import('./pages/InventarioView'));
 const TecnicosView = React.lazy(() => import('./pages/TecnicosView'));
 
@@ -198,6 +199,16 @@ function App() {
             element={
               <Suspense fallback={<LoadingSpinner text="Cargando Checklist..." />}>
                 <ChecklistView />
+              </Suspense>
+            } 
+          />
+          
+          {/* Ruta para Checklist Diario */}
+          <Route 
+            path="checklist-diario" 
+            element={
+              <Suspense fallback={<LoadingSpinner text="Cargando Checklist Diario..." />}>
+                <ChecklistDiarioView />
               </Suspense>
             } 
           />

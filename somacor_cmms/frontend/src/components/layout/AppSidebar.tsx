@@ -83,6 +83,11 @@ const navigationItems = [
     href: "/checklist",
     icon: CheckSquare,
   },
+  {
+    title: "Checklist Diario",
+    href: "/checklist-diario",
+    icon: ClipboardList,
+  },
 ]
 
 const configItems = [

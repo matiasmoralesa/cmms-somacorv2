@@ -199,35 +199,113 @@ class AgendaSerializer(serializers.ModelSerializer):
 # SERIALIZERS DE CHECKLISTS
 # =============================================================================
 
-class ChecklistTemplateSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ChecklistTemplate
-        fields = '__all__'
-
-class ChecklistCategorySerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ChecklistCategory
-        fields = '__all__'
+# --- SERIALIZERS PARA EL MÓDULO DE CHECKLISTS ---
 
 class ChecklistItemSerializer(serializers.ModelSerializer):
+    """ Serializer para un ítem individual del checklist. """
     class Meta:
         model = ChecklistItem
-        fields = '__all__'
+        fields = ['id_item', 'texto', 'es_critico', 'orden']
 
-class ChecklistInstanceSerializer(serializers.ModelSerializer):
-    orden_nombre = serializers.CharField(source='orden_trabajo.numeroot', read_only=True)
-    tecnico_nombre = serializers.CharField(source='tecnico.user.get_full_name', read_only=True)
-    
+class ChecklistCategorySerializer(serializers.ModelSerializer):
+    """ Serializer para una categoría, incluyendo sus ítems anidados. """
+    items = ChecklistItemSerializer(many=True, read_only=True)
     class Meta:
-        model = ChecklistInstance
-        fields = '__all__'
+        model = ChecklistCategory
+        fields = ['id_category', 'nombre', 'orden', 'items']
+
+class ChecklistTemplateSerializer(serializers.ModelSerializer):
+    """
+    Serializer para la plantilla de checklist. Se usa para leer la plantilla
+    completa con todas sus categorías e ítems.
+    """
+    categories = ChecklistCategorySerializer(many=True, read_only=True)
+    tipo_equipo_nombre = serializers.CharField(source='tipo_equipo.nombretipo', read_only=True)
+    class Meta:
+        model = ChecklistTemplate
+        fields = ['id_template', 'nombre', 'tipo_equipo', 'tipo_equipo_nombre', 'activo', 'categories']
 
 class ChecklistAnswerSerializer(serializers.ModelSerializer):
-    item_nombre = serializers.CharField(source='checklist_item.nombre', read_only=True)
-    
+    """ Serializer para procesar las respuestas de un checklist. """
+    item = serializers.IntegerField()
     class Meta:
         model = ChecklistAnswer
-        fields = '__all__'
+        fields = ['item', 'estado', 'observacion_item']
+
+class ChecklistImageSerializer(serializers.ModelSerializer):
+    """ Serializer para procesar las imágenes de un checklist. """
+    usuario_subida_nombre = serializers.CharField(source='usuario_subida.get_full_name', read_only=True)
+    
+    class Meta:
+        model = ChecklistImage
+        fields = ['id_imagen', 'descripcion', 'imagen_base64', 'fecha_subida', 'usuario_subida_nombre']
+        read_only_fields = ['id_imagen', 'fecha_subida', 'usuario_subida_nombre']
+
+class ChecklistInstanceSerializer(serializers.ModelSerializer):
+    """
+    Serializer principal para crear y leer un checklist completado.
+    Maneja la creación anidada de las respuestas y la subida de múltiples imágenes.
+    """
+    answers = ChecklistAnswerSerializer(many=True, write_only=True)
+    imagenes = ChecklistImageSerializer(many=True, write_only=True, required=False)
+    
+    # Campos de solo lectura para visualizar la información relacionada
+    operador_nombre = serializers.CharField(source='operador.get_full_name', read_only=True)
+    equipo_nombre = serializers.CharField(source='equipo.nombreequipo', read_only=True)
+    template_nombre = serializers.CharField(source='template.nombre', read_only=True)
+    imagenes_list = ChecklistImageSerializer(source='imagenes', many=True, read_only=True)
+    
+    # Mantener compatibilidad con imagen_evidencia para casos legacy
+    imagen_evidencia = serializers.CharField(allow_null=True, allow_blank=True, required=False)
+
+    class Meta:
+        model = ChecklistInstance
+        fields = [
+            'id_instance', 'template', 'equipo', 'fecha_inspeccion', 
+            'horometro_inspeccion', 'lugar_inspeccion', 'observaciones_generales', 
+            'fecha_creacion', 'answers', 'imagenes', 'operador_nombre', 'equipo_nombre', 
+            'template_nombre', 'imagenes_list', 'imagen_evidencia'
+        ]
+
+    def create(self, validated_data):
+        """
+        Sobrescribe el método de creación para manejar la creación anidada de
+        la instancia del checklist, sus respuestas y múltiples imágenes.
+        """
+        from django.db import transaction
+        
+        answers_data = validated_data.pop('answers')
+        imagenes_data = validated_data.pop('imagenes', [])
+        
+        # Asignamos el usuario de la solicitud actual como el operador.
+        user = self.context["request"].user
+        if user and user.is_authenticated:
+            validated_data["operador"] = user
+        else:
+            raise serializers.ValidationError("Usuario no autenticado para asignar como operador.")
+        
+        with transaction.atomic():
+            instance = ChecklistInstance.objects.create(**validated_data)
+
+            # Crear las respuestas del checklist
+            for answer_data in answers_data:
+                item_id = answer_data.pop('item')
+                item = ChecklistItem.objects.get(id_item=item_id)
+                ChecklistAnswer.objects.create(
+                    instance=instance,
+                    item=item,
+                    **answer_data
+                )
+
+            # Crear las imágenes del checklist
+            for imagen_data in imagenes_data:
+                ChecklistImage.objects.create(
+                    instance=instance,
+                    usuario_subida=user,
+                    **imagen_data
+                )
+
+            return instance
 
 # =============================================================================
 # SERIALIZERS DE EVIDENCIAS

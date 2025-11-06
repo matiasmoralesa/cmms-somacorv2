@@ -4,6 +4,7 @@ URLs V2 - Rutas optimizadas para la API V2
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from . import views_v2
+from .views_checklist import ChecklistWorkflowViewSet
 
 router = DefaultRouter()
 
@@ -23,6 +24,9 @@ router.register(r'checklist-items', views_v2.ChecklistItemViewSet)
 router.register(r'checklist-instance', views_v2.ChecklistInstanceViewSet)
 router.register(r'inventario', views_v2.InventarioViewSet, basename='inventario')
 router.register(r'roles', views_v2.RolesViewSet)
+
+# Workflows especializados
+router.register(r'checklist-workflow', ChecklistWorkflowViewSet, basename='checklist-workflow')
 
 urlpatterns = [
     # APIs principales
