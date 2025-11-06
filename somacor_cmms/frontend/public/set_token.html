@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configurar Token de Autenticación - Somacor CMMS</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            width: 100%;
+            padding: 40px;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 16px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        input[type="text"] {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        button {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-top: 10px;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .message {
+            padding: 16px;
+            border-radius: 8px;
+            margin-top: 20px;
+            display: none;
+        }
+        
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            display: block;
+        }
+        
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            display: block;
+        }
+        
+        .message.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+            display: block;
+        }
+        
+        .info-box {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 16px;
+            margin-top: 20px;
+            border-radius: 4px;
+        }
+        
+        .info-box h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+        
+        .info-box p {
+            color: #666;
+            line-height: 1.6;
+            font-size: 14px;
+        }
+        
+        .code-block {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 12px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            margin-top: 10px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Configurar Token de Autenticación</h1>
+        <p class="subtitle">Ingresa tu token de autenticación para acceder al sistema</p>
+        
+        <form id="tokenForm">
+            <div class="form-group">
+                <label for="token">Token de Autenticación</label>
+                <input 
+                    type="text" 
+                    id="token" 
+                    name="token" 
+                    placeholder="Pega aquí tu token de autenticación"
+                    required
+                />
+            </div>
+            
+            <button type="submit">Guardar Token</button>
+        </form>
+        
+        <div id="message" class="message"></div>
+        
+        <div class="info-box">
+            <h3>📋 ¿Cómo obtener tu token?</h3>
+            <p><strong>Opción 1 - Desde el backend:</strong></p>
+            <p>Ejecuta en la terminal del backend:</p>
+            <div class="code-block">cd somacor_cmms\backend<br>python create_token.py</div>
+            
+            <p style="margin-top: 15px;"><strong>Opción 2 - Desde la consola del navegador:</strong></p>
+            <p>Si ya tienes el token, cópialo y pégalo arriba.</p>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('tokenForm');
+        const messageDiv = document.getElementById('message');
+        const tokenInput = document.getElementById('token');
+
+        // Cargar token existente si existe
+        window.addEventListener('DOMContentLoaded', () => {
+            const existingToken = localStorage.getItem('authToken');
+            if (existingToken) {
+                tokenInput.value = existingToken;
+                showMessage('Ya tienes un token guardado. Puedes actualizarlo si es necesario.', 'info');
+            }
+        });
+
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            const token = tokenInput.value.trim();
+            
+            if (!token) {
+                showMessage('Por favor, ingresa un token válido.', 'error');
+                return;
+            }
+            
+            // Guardar token en localStorage
+            localStorage.setItem('authToken', token);
+            
+            showMessage('✅ Token guardado exitosamente. Ahora puedes acceder al sistema.', 'success');
+            
+            // Redirigir al dashboard después de 2 segundos
+            setTimeout(() => {
+                window.location.href = '/';
+            }, 2000);
+        });
+
+        function showMessage(text, type) {
+            messageDiv.textContent = text;
+            messageDiv.className = 'message ' + type;
+            
+            // Auto-ocultar después de 5 segundos (excepto success que redirige)
+            if (type !== 'success') {
+                setTimeout(() => {
+                    messageDiv.style.display = 'none';
+                }, 5000);
+            }
+        }
+    </script>
+</body>
+</html>
+

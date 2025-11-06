@@ -1,0 +1,32 @@
+# Dependencias del Bot Omnicanal Somacor-CMMS
+
+# Framework web (compatible con Airflow)
+flask>=2.2,<2.3
+flask-cors==4.0.0
+
+# Apache Airflow
+apache-airflow==2.8.0
+
+# Gestión de sesiones
+redis==5.0.1
+
+# Servicios de mensajería
+python-telegram-bot==20.7
+twilio==8.11.0
+
+# Cliente HTTP
+requests==2.31.0
+
+# Utilidades
+python-dotenv==1.0.0
+
+# Base de datos (opcional para producción)
+psycopg2-binary==2.9.9
+
+# Testing
+pytest==7.4.3
+pytest-asyncio==0.21.1
+
+# Desarrollo
+black==23.11.0
+flake8==6.1.0
