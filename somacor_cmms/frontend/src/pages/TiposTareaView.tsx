@@ -135,23 +135,57 @@ const TiposTareaView: React.FC = () => {
   };
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        // Usar datos mock por ahora
-        setTiposTarea(mockTiposTarea);
-        setStats(mockStats);
-        setError('');
-      } catch (err) {
-        console.error("Error fetching task types data:", err);
-        setError("No se pudo cargar la información de tipos de tarea.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchData();
   }, []);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      
+      const response = await tiposTareaService.getAll();
+      const tipos = response.results || response || [];
+      
+      const tiposTransformados = tipos.map((tipo: any) => ({
+        id: tipo.idtipotarea || tipo.id,
+        name: tipo.nombretarea || tipo.name,
+        description: tipo.descripcion || 'Sin descripción',
+        category: tipo.categoria || 'preventivo',
+        estimatedDuration: tipo.duracion_estimada || '1 hora',
+        difficulty: tipo.dificultad || 'media',
+        isActive: tipo.activo !== undefined ? tipo.activo : true,
+        taskCount: tipo.tareas_count || 0,
+        createdAt: tipo.fecha_creacion || new Date().toISOString().split('T')[0],
+        lastUpdated: tipo.fecha_actualizacion || new Date().toISOString().split('T')[0]
+      }));
+      
+      setTiposTarea(tiposTransformados);
+      
+      const activeTipos = tiposTransformados.filter((t: any) => t.isActive).length;
+      const totalTasks = tiposTransformados.reduce((sum: number, t: any) => sum + t.taskCount, 0);
+      const mostUsed = tiposTransformados.length > 0 
+        ? tiposTransformados.reduce((prev: any, current: any) => 
+            (prev.taskCount > current.taskCount) ? prev : current
+          ).name
+        : 'N/A';
+      
+      setStats({
+        totalTipos: tiposTransformados.length,
+        activeTipos,
+        totalTasks,
+        mostUsedType: mostUsed
+      });
+      
+      console.log('✅ Tipos de tarea cargados:', tiposTransformados.length);
+    } catch (err) {
+      console.error("❌ Error fetching task types:", err);
+      setError("No se pudo cargar la información de tipos de tarea.");
+      setTiposTarea([]);
+      setStats({ totalTipos: 0, activeTipos: 0, totalTasks: 0, mostUsedType: 'N/A' });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Filtrar tipos de tarea
   const filteredTiposTarea = tiposTarea.filter(tipo => {
