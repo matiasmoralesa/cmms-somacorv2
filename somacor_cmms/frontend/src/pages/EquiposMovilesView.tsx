@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { PageLayout, PageHeader, StatsGrid, ContentGrid } from '@/components/layout/PageLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { 
   Wrench, 
   Search, 
@@ -23,6 +25,7 @@ import { equiposService } from '@/services/apiService';
 import CreateEquipmentForm from '@/components/forms/CreateEquipmentForm';
 import { useRealtimeUpdates } from '@/hooks/useRealtimeUpdates';
 import ConnectionStatus from '@/components/ConnectionStatus';
+import apiClient from '@/api/apiClient';
 
 // =================================================================================
 // TIPOS DE DATOS
@@ -54,6 +57,7 @@ interface EquiposStats {
 // =================================================================================
 
 export default function EquiposMovilesView() {
+  const navigate = useNavigate();
   const [equipos, setEquipos] = useState<Equipo[]>([]);
   const [stats, setStats] = useState<EquiposStats | null>(null);
   const [categories, setCategories] = useState<string[]>([]);
@@ -61,6 +65,7 @@ export default function EquiposMovilesView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<{isOpen: boolean, equipo: Equipo | null}>({isOpen: false, equipo: null});
   
   // Real-time updates
   const { realtimeData, connectionStatus, subscribeToUpdates } = useRealtimeUpdates({
@@ -174,6 +179,10 @@ export default function EquiposMovilesView() {
   };
 
   const getEstadoColor = (estado: string) => {
+    if (!estado || typeof estado !== 'string') {
+      return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-100';
+    }
+    
     switch (estado.toLowerCase()) {
       case 'operativo':
         return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100';
@@ -192,6 +201,10 @@ export default function EquiposMovilesView() {
   };
 
   const getEstadoIcon = (estado: string) => {
+    if (!estado || typeof estado !== 'string') {
+      return <Clock className="h-4 w-4" />;
+    }
+    
     switch (estado.toLowerCase()) {
       case 'operativo':
         return <CheckCircle className="h-4 w-4" />;
@@ -208,18 +221,29 @@ export default function EquiposMovilesView() {
   };
 
   const handleViewDetails = (equipo: Equipo) => {
-    console.log('Ver detalles de:', equipo);
-    // TODO: Implementar navegación a detalles del equipo
+    navigate(`/equipos/${equipo.id}`);
   };
 
   const handleEdit = (equipo: Equipo) => {
-    console.log('Editar equipo:', equipo);
-    // TODO: Implementar edición del equipo
+    navigate(`/equipos/${equipo.id}/editar`);
   };
 
   const handleDelete = (equipo: Equipo) => {
-    console.log('Eliminar equipo:', equipo);
-    // TODO: Implementar eliminación del equipo
+    setDeleteConfirm({ isOpen: true, equipo });
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteConfirm.equipo) return;
+    
+    try {
+      await equiposService.delete(deleteConfirm.equipo.id);
+      setDeleteConfirm({ isOpen: false, equipo: null });
+      loadInitialData();
+      loadEquipos();
+    } catch (err) {
+      console.error('Error al eliminar equipo:', err);
+      setError('Error al eliminar el equipo');
+    }
   };
 
   // =================================================================================
@@ -467,6 +491,25 @@ export default function EquiposMovilesView() {
           loadEquipos(); // Recargar lista de equipos
         }}
       />
+
+      {/* Diálogo de confirmación de eliminación */}
+      <AlertDialog open={deleteConfirm.isOpen} onOpenChange={(isOpen) => setDeleteConfirm({ isOpen, equipo: null })}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción eliminará permanentemente el equipo <strong>{deleteConfirm.equipo?.nombre}</strong> (Código: {deleteConfirm.equipo?.codigo}).
+              Esta acción no se puede deshacer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </PageLayout>
   );
 }

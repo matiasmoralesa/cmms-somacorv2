@@ -121,7 +121,8 @@ export const equiposService = {
   async getCategories(): Promise<string[]> {
     try {
       const response = await apiClient.get('v2/tipos-equipo/');
-      return response.data.results.map((t: any) => t.nombretipo);
+      const results = Array.isArray(response.data.results) ? response.data.results : [];
+      return results.map((t: any) => t.nombretipo || t.nombre).filter(Boolean);
     } catch (error) {
       console.error('Error al obtener categorías:', error);
       return [];
@@ -131,8 +132,8 @@ export const equiposService = {
   async getStates(): Promise<string[]> {
     try {
       const response = await apiClient.get('v2/equipos/');
-      const equipos = response.data.results;
-      const estados = [...new Set(equipos.map((e: any) => e.estado_nombre))];
+      const equipos = Array.isArray(response.data.results) ? response.data.results : [];
+      const estados = [...new Set(equipos.map((e: any) => e.estado_nombre).filter(Boolean))];
       return estados;
     } catch (error) {
       console.error('Error al obtener estados:', error);
@@ -143,12 +144,13 @@ export const equiposService = {
   async getStats(): Promise<any> {
     try {
       const response = await apiClient.get('v2/equipos/');
-      const equipos = response.data.results;
+      const equipos = Array.isArray(response.data.results) ? response.data.results : [];
       
       const stats = {
-        total_equipos: response.data.count,
+        total_equipos: response.data.count || equipos.length,
         equipos_activos: equipos.filter((e: any) => e.activo).length,
         equipos_inactivos: equipos.filter((e: any) => !e.activo).length,
+        equipos_en_mantenimiento: equipos.filter((e: any) => e.estado_nombre && e.estado_nombre.toLowerCase().includes('mantenimiento')).length,
         equipos_criticos: equipos.filter((e: any) => e.estado_nombre === 'En Mantenimiento').length,
         por_estado: {} as Record<string, number>,
         por_tipo: {} as Record<string, number>,
@@ -156,9 +158,15 @@ export const equiposService = {
       };
       
       equipos.forEach((equipo: any) => {
-        stats.por_estado[equipo.estado_nombre] = (stats.por_estado[equipo.estado_nombre] || 0) + 1;
-        stats.por_tipo[equipo.tipo_equipo_nombre] = (stats.por_tipo[equipo.tipo_equipo_nombre] || 0) + 1;
-        stats.por_faena[equipo.faena_nombre] = (stats.por_faena[equipo.faena_nombre] || 0) + 1;
+        if (equipo.estado_nombre) {
+          stats.por_estado[equipo.estado_nombre] = (stats.por_estado[equipo.estado_nombre] || 0) + 1;
+        }
+        if (equipo.tipo_equipo_nombre) {
+          stats.por_tipo[equipo.tipo_equipo_nombre] = (stats.por_tipo[equipo.tipo_equipo_nombre] || 0) + 1;
+        }
+        if (equipo.faena_nombre) {
+          stats.por_faena[equipo.faena_nombre] = (stats.por_faena[equipo.faena_nombre] || 0) + 1;
+        }
       });
       
       return stats;
@@ -168,6 +176,7 @@ export const equiposService = {
         total_equipos: 0,
         equipos_activos: 0,
         equipos_inactivos: 0,
+        equipos_en_mantenimiento: 0,
         equipos_criticos: 0,
         por_estado: {},
         por_tipo: {},
@@ -595,6 +604,8 @@ export const dashboardService = {
 
   async getMonthlyData(): Promise<any[]> {
     try {
+      // No pasar parámetro year para obtener los últimos 12 meses automáticamente
+      // Si necesitas un año específico, puedes pasar: params: { year: 2024 }
       const response = await apiClient.get('v2/dashboard/monthly_data/');
       console.log('📅 [DASHBOARD] Datos mensuales cargados desde el backend:', response.data);
       return response.data;

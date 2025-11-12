@@ -25,10 +25,11 @@ const PlaceholderPage = React.lazy(() => import('./components/shared/Placeholder
 const PlanesMantenimientoView = React.lazy(() => import('./pages/PlanesMantenimientoView'));
 const OrdenesTrabajoView = React.lazy(() => import('./pages/OrdenesTrabajoView'));
 const EjecucionOTView = React.lazy(() => import('./pages/EjecucionOTView'));
-const ChecklistView = React.lazy(() => import('./pages/ChecklistView'));
 const ChecklistDiarioView = React.lazy(() => import('./pages/ChecklistDiarioView'));
 const InventarioView = React.lazy(() => import('./pages/InventarioView'));
 const TecnicosView = React.lazy(() => import('./pages/TecnicosView'));
+const EquipoDetalleView = React.lazy(() => import('./pages/EquipoDetalleView'));
+const EquipoEditarView = React.lazy(() => import('./pages/EquipoEditarView'));
 
 // Componentes de autenticación
 const LoginView = React.lazy(() => import('./pages/LoginView'));
@@ -86,14 +87,32 @@ function App() {
             } 
           />
           
-          <Route 
-            path="equipos" 
-            element={
-              <Suspense fallback={<LoadingSpinner text="Cargando Equipos..." />}>
-                <EquiposMovilesView />
-              </Suspense>
-            } 
-          />
+          <Route path="equipos">
+            <Route 
+              index 
+              element={
+                <Suspense fallback={<LoadingSpinner text="Cargando Equipos..." />}>
+                  <EquiposMovilesView />
+                </Suspense>
+              } 
+            />
+            <Route 
+              path=":id" 
+              element={
+                <Suspense fallback={<LoadingSpinner text="Cargando Detalles..." />}>
+                  <EquipoDetalleView />
+                </Suspense>
+              } 
+            />
+            <Route 
+              path=":id/editar" 
+              element={
+                <Suspense fallback={<LoadingSpinner text="Cargando Editor..." />}>
+                  <EquipoEditarView />
+                </Suspense>
+              } 
+            />
+          </Route>
           
           <Route 
             path="mantenimiento-preventivo" 
@@ -196,21 +215,11 @@ function App() {
             />
           </Route>
           
-          {/* Nueva ruta para Checklist */}
+          {/* Ruta unificada para Checklist */}
           <Route 
             path="checklist" 
             element={
               <Suspense fallback={<LoadingSpinner text="Cargando Checklist..." />}>
-                <ChecklistView />
-              </Suspense>
-            } 
-          />
-          
-          {/* Ruta para Checklist Diario */}
-          <Route 
-            path="checklist-diario" 
-            element={
-              <Suspense fallback={<LoadingSpinner text="Cargando Checklist Diario..." />}>
                 <ChecklistDiarioView />
               </Suspense>
             } 
