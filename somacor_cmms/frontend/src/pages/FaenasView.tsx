@@ -68,70 +68,6 @@ const FaenasView: React.FC = () => {
   const [showEditForm, setShowEditForm] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
-  // Datos de ejemplo para el diseño
-  const mockFaenas: Faena[] = [
-    {
-      id: 1,
-      name: 'Planta Norte',
-      location: 'Región Metropolitana, Santiago',
-      contact: 'Juan Pérez',
-      phone: '+56 9 1234 5678',
-      email: 'planta.norte@somacor.com',
-      isActive: true,
-      equipmentCount: 45,
-      technicianCount: 8,
-      lastMaintenance: '2024-10-15',
-      createdAt: '2024-01-15'
-    },
-    {
-      id: 2,
-      name: 'Planta Sur',
-      location: 'Región del Biobío, Concepción',
-      contact: 'María García',
-      phone: '+56 9 2345 6789',
-      email: 'planta.sur@somacor.com',
-      isActive: true,
-      equipmentCount: 38,
-      technicianCount: 6,
-      lastMaintenance: '2024-10-14',
-      createdAt: '2024-02-20'
-    },
-    {
-      id: 3,
-      name: 'Planta Central',
-      location: 'Región de Valparaíso, Viña del Mar',
-      contact: 'Carlos López',
-      phone: '+56 9 3456 7890',
-      email: 'planta.central@somacor.com',
-      isActive: true,
-      equipmentCount: 52,
-      technicianCount: 10,
-      lastMaintenance: '2024-10-13',
-      createdAt: '2024-03-10'
-    },
-    {
-      id: 4,
-      name: 'Planta Este',
-      location: 'Región de Antofagasta, Calama',
-      contact: 'Ana Martínez',
-      phone: '+56 9 4567 8901',
-      email: 'planta.este@somacor.com',
-      isActive: false,
-      equipmentCount: 21,
-      technicianCount: 4,
-      lastMaintenance: '2024-09-20',
-      createdAt: '2024-04-15'
-    }
-  ];
-
-  const mockStats: FaenaStats = {
-    totalFaenas: 8,
-    activeFaenas: 6,
-    inactiveFaenas: 2,
-    totalEquipment: 156,
-    totalTechnicians: 28
-  };
-
   useEffect(() => {
     fetchData();
   }, []);
@@ -141,13 +77,41 @@ const FaenasView: React.FC = () => {
       setLoading(true);
       setError('');
       
-      // TODO: Cargar datos reales del backend
-      // const data = await faenasService.getAll();
-      // setFaenas(data.results);
+      // Cargar datos reales del backend
+      const response = await faenasService.getAll();
+      const faenasData = response.results || response || [];
       
-      // Usar datos mock por ahora
-      setFaenas(mockFaenas);
-      setStats(mockStats);
+      // Transformar datos del backend
+      const faenasTransformadas = faenasData.map((faena: any) => ({
+        id: faena.idfaena,
+        name: faena.nombrefaena,
+        location: `${faena.ciudad || ''}, ${faena.region || ''}`.trim() || faena.ubicacion || 'Sin ubicación',
+        contact: faena.contacto || 'Sin contacto',
+        phone: faena.telefono || 'Sin teléfono',
+        email: faena.email || 'Sin email',
+        isActive: faena.activa !== undefined ? faena.activa : true,
+        equipmentCount: faena.equipos_count || 0,
+        technicianCount: faena.tecnicos_count || 0,
+        lastMaintenance: faena.ultimo_mantenimiento || 'N/A',
+        createdAt: faena.fechacreacion || new Date().toISOString().split('T')[0]
+      }));
+      
+      setFaenas(faenasTransformadas);
+      
+      // Calcular estadísticas
+      const activeFaenas = faenasTransformadas.filter((f: any) => f.isActive).length;
+      const totalEquipment = faenasTransformadas.reduce((sum: number, f: any) => sum + f.equipmentCount, 0);
+      const totalTechnicians = faenasTransformadas.reduce((sum: number, f: any) => sum + f.technicianCount, 0);
+      
+      setStats({
+        totalFaenas: faenasTransformadas.length,
+        activeFaenas,
+        inactiveFaenas: faenasTransformadas.length - activeFaenas,
+        totalEquipment,
+        totalTechnicians
+      });
+      
+      console.log('✅ Faenas cargadas:', faenasTransformadas.length);
     } catch (err) {
       console.error("Error fetching faenas data:", err);
       setError("No se pudo cargar la información de faenas.");
@@ -170,23 +134,14 @@ const FaenasView: React.FC = () => {
     if (!selectedFaena) return;
     
     try {
-      console.log('Eliminando faena:', selectedFaena.id);
-      
-      // TODO: Implementar eliminación en el backend
-      // await faenasService.delete(selectedFaena.id);
-      
-      // Simular eliminación
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      alert('Faena eliminada exitosamente');
+      await faenasService.delete(selectedFaena.id);
+      console.log('✅ Faena eliminada:', selectedFaena.name);
       setShowDeleteDialog(false);
       setSelectedFaena(null);
-      
-      // Recargar datos
-      fetchData();
+      await fetchData();
     } catch (err) {
-      console.error('Error eliminando faena:', err);
-      alert('Error al eliminar la faena');
+      console.error('❌ Error eliminando faena:', err);
+      setError('Error al eliminar la faena');
     }
   };
 
@@ -430,10 +385,22 @@ const FaenasView: React.FC = () => {
                 </div>
               ))}
               
-              {filteredFaenas.length === 0 && (
+              {filteredFaenas.length === 0 && faenas.length === 0 && (
+                <div className="text-center py-12 text-muted-foreground">
+                  <Building2 className="mx-auto h-16 w-16 text-muted-foreground/30 mb-4" />
+                  <h3 className="text-lg font-medium mb-2">No hay faenas registradas</h3>
+                  <p className="text-sm mb-4">Comienza creando la primera faena o sitio de trabajo.</p>
+                  <Button onClick={() => setShowCreateForm(true)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Crear Primera Faena
+                  </Button>
+                </div>
+              )}
+              
+              {filteredFaenas.length === 0 && faenas.length > 0 && (
                 <div className="text-center py-8 text-muted-foreground">
-                  <Building2 className="mx-auto h-12 w-12 text-muted-foreground/50" />
-                  <h3 className="mt-2 text-sm font-medium">No se encontraron faenas</h3>
+                  <Search className="mx-auto h-12 w-12 text-muted-foreground/50" />
+                  <h3 className="mt-2 text-sm font-medium">No se encontraron resultados</h3>
                   <p className="mt-1 text-sm">No hay faenas que coincidan con los filtros seleccionados.</p>
                 </div>
               )}
