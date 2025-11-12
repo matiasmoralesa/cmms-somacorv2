@@ -63,6 +63,11 @@ const MaintenanceConfigView: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [selectedConfig, setSelectedConfig] = useState<MaintenanceConfig | null>(null);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [showEditForm, setShowEditForm] = useState(false);
+  const [showDetailPanel, setShowDetailPanel] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   // Datos de ejemplo para el diseño
   const mockConfigs: MaintenanceConfig[] = [
@@ -211,6 +216,41 @@ const MaintenanceConfigView: React.FC = () => {
     );
   };
 
+  // Handlers de botones
+  const handleCreateConfig = () => {
+    console.log('✅ Abriendo formulario de nueva configuración');
+    setShowCreateForm(true);
+    alert('Formulario de nueva configuración (por implementar)');
+  };
+
+  const handleViewConfig = (config: MaintenanceConfig) => {
+    console.log('👁️ Viendo configuración:', config.equipmentName);
+    setSelectedConfig(config);
+    setShowDetailPanel(true);
+    alert(`Ver detalles de: ${config.equipmentName}`);
+  };
+
+  const handleEditConfig = (config: MaintenanceConfig) => {
+    console.log('✏️ Editando configuración:', config.equipmentName);
+    setSelectedConfig(config);
+    setShowEditForm(true);
+    alert(`Editar configuración de: ${config.equipmentName}`);
+  };
+
+  const handleRefreshConfig = (config: MaintenanceConfig) => {
+    console.log('🔄 Actualizando configuración:', config.equipmentName);
+    alert(`Actualizar próximo mantenimiento de: ${config.equipmentName}`);
+  };
+
+  const handleDeleteConfig = (config: MaintenanceConfig) => {
+    console.log('🗑️ Eliminando configuración:', config.equipmentName);
+    setSelectedConfig(config);
+    if (confirm(`¿Estás seguro de eliminar la configuración de ${config.equipmentName}?`)) {
+      setConfigs(prev => prev.filter(c => c.id !== config.id));
+      alert('Configuración eliminada correctamente');
+    }
+  };
+
   if (loading) {
     return (
       <PageLayout>
@@ -237,7 +277,7 @@ const MaintenanceConfigView: React.FC = () => {
         title="Configuración de Mantenimiento" 
         subtitle="Gestión de planes y configuraciones de mantenimiento preventivo"
       >
-        <Button>
+        <Button onClick={handleCreateConfig}>
           <Plus className="h-4 w-4 mr-2" />
           Nueva Configuración
         </Button>
@@ -395,16 +435,37 @@ const MaintenanceConfigView: React.FC = () => {
                     </div>
                     
                     <div className="flex gap-1 ml-4">
-                      <Button variant="outline" size="sm">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleViewConfig(config)}
+                        title="Ver detalles"
+                      >
                         <Eye className="h-3 w-3" />
                       </Button>
-                      <Button variant="outline" size="sm">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleEditConfig(config)}
+                        title="Editar configuración"
+                      >
                         <Edit className="h-3 w-3" />
                       </Button>
-                      <Button variant="outline" size="sm">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleRefreshConfig(config)}
+                        title="Actualizar próximo mantenimiento"
+                      >
                         <RefreshCw className="h-3 w-3" />
                       </Button>
-                      <Button variant="outline" size="sm">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleDeleteConfig(config)}
+                        title="Eliminar configuración"
+                        className="text-red-600 hover:text-red-700"
+                      >
                         <Trash2 className="h-3 w-3" />
                       </Button>
                     </div>

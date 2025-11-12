@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Se crea una instancia de Axios para centralizar la configuración de la API.
 const apiClient = axios.create({
-    baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/', // La URL base de tu backend de Django.
+    baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api', // La URL base de tu backend de Django (sin slash final)
     timeout: Number(import.meta.env.VITE_API_TIMEOUT) || 10000, // Timeout configurable desde .env
     headers: {
         'Content-Type': 'application/json',
@@ -19,7 +19,7 @@ function getCacheKey(config: any): string {
     return `${config.method}_${config.url}_${JSON.stringify(config.params || {})}`;
 }
 
-// Interceptor para añadir el token de autenticación y caché
+// Interceptor para añadir el token de autenticación
 apiClient.interceptors.request.use(
     config => {
         const token = localStorage.getItem('authToken');
@@ -30,24 +30,8 @@ apiClient.interceptors.request.use(
         // Log de petición
         console.log(`🔵 [API] ${config.method?.toUpperCase()} ${config.url}`, {
             params: config.params,
-            headers: config.headers,
             token: token ? 'Present' : 'None'
         });
-        
-        // Solo cachear peticiones GET
-        if (config.method === 'get') {
-            const cacheKey = getCacheKey(config);
-            const cachedData = requestCache.get(cacheKey);
-            
-            if (cachedData && Date.now() - cachedData.timestamp < CACHE_DURATION) {
-                console.log(`💾 [API] Using cached data for ${config.url}`);
-                // Retornar datos cacheados
-                return Promise.reject({
-                    isCached: true,
-                    data: cachedData.data
-                });
-            }
-        }
         
         return config;
     }, 

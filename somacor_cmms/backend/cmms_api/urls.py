@@ -59,9 +59,11 @@ urlpatterns = [
     # Rutas de prueba - temporalmente deshabilitadas
     # path('test/', test_view, name='test_view'),
     # path('test-models/', test_models, name='test_models'),
-    # Rutas de autenticación
+    # Rutas de autenticación (con y sin slash para evitar redirects)
     path('login/', views.CustomAuthToken.as_view(), name='auth_token'),
+    path('login', views.CustomAuthToken.as_view(), name='auth_token_no_slash'),
     path('logout/', views.LogoutView.as_view(), name='logout'),
+    path('logout', views.LogoutView.as_view(), name='logout_no_slash'),
 
     # Dashboard endpoints - temporalmente deshabilitados
     # path('dashboard/stats/', dashboard_stats, name='dashboard_stats'),

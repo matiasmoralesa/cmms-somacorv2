@@ -65,10 +65,52 @@ class Equipos(models.Model):
     idfaenaactual = models.ForeignKey(Faenas, on_delete=models.SET_NULL, db_column='IDFaenaActual', blank=True, null=True)
     idestadoactual = models.ForeignKey(EstadosEquipo, on_delete=models.PROTECT, db_column='IDEstadoActual')
     activo = models.BooleanField(db_column='Activo', default=True)
-    def __str__(self): return f"{self.nombreequipo} ({self.patente or self.codigointerno})"
+    
+    @property
+    def ordenes_pendientes_count(self):
+        """Cantidad de órdenes pendientes"""
+        return self.ordenestrabajo_set.filter(
+            idestadoot__nombreestadoot__in=['Abierta', 'En Progreso', 'Asignada']
+        ).count()
+    
+    @property
+    def ultimo_mantenimiento(self):
+        """Fecha del último mantenimiento completado"""
+        ultima_orden = self.ordenestrabajo_set.filter(
+            idestadoot__nombreestadoot='Completada'
+        ).order_by('-fechacompletado').first()
+        return ultima_orden.fechacompletado if ultima_orden else None
+    
+    @property
+    def dias_sin_mantenimiento(self):
+        """Días desde el último mantenimiento"""
+        from django.utils import timezone
+        ultimo = self.ultimo_mantenimiento
+        if ultimo:
+            return (timezone.now() - ultimo).days
+        return None
+    
+    @property
+    def requiere_atencion(self):
+        """Determina si el equipo requiere atención urgente"""
+        if not self.activo:
+            return False
+        if self.idestadoactual and 'mantenimiento' in self.idestadoactual.nombreestado.lower():
+            return True
+        if self.ordenes_pendientes_count > 2:
+            return True
+        return False
+    
+    def __str__(self): 
+        return f"{self.nombreequipo} ({self.patente or self.codigointerno or 'S/N'})"
+    
     class Meta: 
         db_table = 'equipos'
         ordering = ['nombreequipo']
+        indexes = [
+            models.Index(fields=['activo'], name='idx_equipos_activo'),
+            models.Index(fields=['idestadoactual'], name='idx_equipos_estado'),
+        ]
 
 # --- NUEVOS MODELOS PARA EL MÓDULO DE CHECKLISTS ---
 
@@ -279,10 +321,45 @@ class OrdenesTrabajo(models.Model):
     observacionesfinales = models.TextField(db_column='ObservacionesFinales', blank=True, null=True)
     tiempototalminutos = models.IntegerField(db_column='TiempoTotalMinutos', blank=True, null=True)
     
-    def __str__(self): return f"{self.numeroot} - {self.idequipo.nombreequipo}"
+    @property
+    def dias_transcurridos(self):
+        """Días desde la creación de la OT"""
+        from django.utils import timezone
+        if self.fechacreacionot:
+            return (timezone.now() - self.fechacreacionot).days
+        return None
+    
+    @property
+    def esta_vencida(self):
+        """Determina si la OT está vencida (>7 días sin completar)"""
+        from django.utils import timezone
+        if self.fechacompletado:
+            return False
+        if self.fechacreacionot:
+            dias = (timezone.now() - self.fechacreacionot).days
+            return dias > 7
+        return False
+    
+    @property
+    def tiempo_resolucion_horas(self):
+        """Tiempo de resolución en horas"""
+        if self.tiempototalminutos:
+            return round(self.tiempototalminutos / 60, 1)
+        return None
+    
+    def __str__(self): 
+        return f"{self.numeroot} - {self.idequipo.nombreequipo if self.idequipo else 'Sin equipo'}"
+    
     class Meta: 
         db_table = 'ordenestrabajo'
         ordering = ['-fechacreacionot']
+        indexes = [
+            models.Index(fields=['fechareportefalla'], name='idx_ot_fecha_reporte'),
+            models.Index(fields=['fechacreacionot'], name='idx_ot_fecha_creacion'),
+            models.Index(fields=['idestadoot', 'fechacreacionot'], name='idx_ot_estado_fecha'),
+            models.Index(fields=['idequipo', 'idestadoot'], name='idx_ot_equipo_estado'),
+            models.Index(fields=['prioridad', 'fechacreacionot'], name='idx_ot_prioridad_fecha'),
+        ]
 
 class ActividadesOrdenTrabajo(models.Model):
     """
@@ -384,4 +461,5 @@ class ChecklistImage(models.Model):
     class Meta:
         db_table = 'checklistimage'
         ordering = ['-fecha_subida']
+
 

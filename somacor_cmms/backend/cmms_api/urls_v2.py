@@ -29,6 +29,13 @@ router.register(r'roles', views_v2.RolesViewSet)
 router.register(r'checklist-workflow', ChecklistWorkflowViewSet, basename='checklist-workflow')
 
 urlpatterns = [
-    # APIs principales
+    # APIs principales con ViewSets registrados en el router
     path('', include(router.urls)),
+    
+    # NOTA: Los endpoints del dashboard ahora están en DashboardViewSet
+    # Accesibles vía:
+    # - /api/v2/dashboard/stats/
+    # - /api/v2/dashboard/monthly_data/
+    # - /api/v2/dashboard/maintenance_types/
+    # - /api/v2/dashboard/recent_work_orders/
 ]

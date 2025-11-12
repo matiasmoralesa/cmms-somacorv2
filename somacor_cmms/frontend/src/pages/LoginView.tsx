@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, User, Lock, AlertCircle } from 'lucide-react';
+import apiClient from '@/api/apiClient';
 
 const LoginView: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -11,8 +12,6 @@ const LoginView: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
-
-  const API_URL = 'http://localhost:8000/api';
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -30,48 +29,61 @@ const LoginView: React.FC = () => {
     setError('');
 
     try {
-      const response = await fetch(`${API_URL}/login/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          username: formData.username,
-          password: formData.password
-        })
+      console.log('🔵 [LOGIN] Intentando login con usuario:', formData.username);
+      
+      const response = await apiClient.post('/login/', {
+        username: formData.username,
+        password: formData.password
       });
 
-      const data = await response.json();
+      console.log('✅ [LOGIN] Login exitoso:', response.data);
 
-      if (response.ok) {
-        // Guardar información de autenticación en localStorage
-        localStorage.setItem('authToken', data.token);
-        localStorage.setItem('userInfo', JSON.stringify(data.user));
-        localStorage.setItem('userRole', JSON.stringify(data.rol));
+      const data = response.data;
 
-        // Redireccionar según el rol del usuario
-        const rolNombre = data.rol.nombre;
-        switch (rolNombre) {
-          case 'Admin':
-          case 'Administrador':
-          case 'Supervisor':
-            navigate('/dashboard');
-            break;
-          case 'Operador':
-            navigate('/estado-maquina');
-            break;
-          case 'Técnico':
-            navigate('/estado-maquina');
-            break;
-          default:
-            navigate('/dashboard');
-        }
-      } else {
-        setError(data.detail || data.message || 'Error en las credenciales');
+      // Guardar información de autenticación en localStorage
+      localStorage.setItem('authToken', data.token);
+      localStorage.setItem('userInfo', JSON.stringify(data.user));
+      localStorage.setItem('userRole', JSON.stringify(data.rol));
+
+      // Redireccionar según el rol del usuario
+      const rolNombre = data.rol?.nombre || 'default';
+      console.log('🔵 [LOGIN] Rol del usuario:', rolNombre);
+      
+      switch (rolNombre) {
+        case 'Admin':
+        case 'Administrador':
+        case 'Supervisor':
+          navigate('/dashboard');
+          break;
+        case 'Operador':
+          navigate('/estado-maquina');
+          break;
+        case 'Técnico':
+          navigate('/estado-maquina');
+          break;
+        default:
+          navigate('/dashboard');
       }
-    } catch (error) {
-      console.error('Error de login:', error);
-      setError('Error de conexión. Por favor, intente nuevamente.');
+    } catch (error: any) {
+      console.error('❌ [LOGIN] Error de login:', error);
+      
+      if (error.response) {
+        // El servidor respondió con un código de error
+        const errorMessage = error.response.data?.detail || 
+                           error.response.data?.message || 
+                           error.response.data?.error ||
+                           'Error en las credenciales';
+        setError(errorMessage);
+        console.error('❌ [LOGIN] Error del servidor:', error.response.status, errorMessage);
+      } else if (error.request) {
+        // La petición se hizo pero no hubo respuesta
+        setError('Error de conexión. Verifica que el servidor esté corriendo.');
+        console.error('❌ [LOGIN] Sin respuesta del servidor');
+      } else {
+        // Algo pasó al configurar la petición
+        setError('Error de conexión. Por favor, intente nuevamente.');
+        console.error('❌ [LOGIN] Error:', error.message);
+      }
     } finally {
       setIsLoading(false);
     }

@@ -52,9 +52,9 @@ class FaenasSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class EquiposSerializer(serializers.ModelSerializer):
-    tipo_equipo_nombre = serializers.CharField(source='idtipoequipo.nombretipo', read_only=True)
-    estado_nombre = serializers.CharField(source='idestadoactual.nombreestado', read_only=True)
-    faena_nombre = serializers.CharField(source='idfaenaactual.nombrefaena', read_only=True)
+    tipo_equipo_nombre = serializers.SerializerMethodField()
+    estado_nombre = serializers.SerializerMethodField()
+    faena_nombre = serializers.SerializerMethodField()
     
     # Campos calculados
     total_ordenes = serializers.SerializerMethodField()
@@ -70,23 +70,41 @@ class EquiposSerializer(serializers.ModelSerializer):
             'total_ordenes', 'ordenes_pendientes', 'ultima_mantenimiento'
         ]
     
+    def get_tipo_equipo_nombre(self, obj):
+        return obj.idtipoequipo.nombretipo if obj.idtipoequipo else 'Sin categoría'
+    
+    def get_estado_nombre(self, obj):
+        return obj.idestadoactual.nombreestado if obj.idestadoactual else 'Sin estado'
+    
+    def get_faena_nombre(self, obj):
+        return obj.idfaenaactual.nombrefaena if obj.idfaenaactual else 'Sin ubicación'
+    
     def get_total_ordenes(self, obj):
-        return OrdenesTrabajo.objects.filter(idequipo=obj).count()
+        try:
+            return OrdenesTrabajo.objects.filter(idequipo=obj).count()
+        except:
+            return 0
     
     def get_ordenes_pendientes(self, obj):
-        return OrdenesTrabajo.objects.filter(
-            idequipo=obj,
-            idestadoot__nombreestadoot__in=['Pendiente', 'En Proceso']
-        ).count()
+        try:
+            return OrdenesTrabajo.objects.filter(
+                idequipo=obj,
+                idestadoot__nombreestadoot__in=['Pendiente', 'En Proceso']
+            ).count()
+        except:
+            return 0
     
     def get_ultima_mantenimiento(self, obj):
-        ultima_ot = OrdenesTrabajo.objects.filter(
-            idequipo=obj,
-            idestadoot__nombreestadoot='Completada'
-        ).order_by('-fechacompletado').first()
-        
-        if ultima_ot:
-            return ultima_ot.fechacompletado
+        try:
+            ultima_ot = OrdenesTrabajo.objects.filter(
+                idequipo=obj,
+                idestadoot__nombreestadoot='Completada'
+            ).order_by('-fechacompletado').first()
+            
+            if ultima_ot and ultima_ot.fechacompletado:
+                return ultima_ot.fechacompletado
+        except:
+            pass
         return None
 
 # =============================================================================
@@ -109,7 +127,7 @@ class OrdenesTrabajoSerializer(serializers.ModelSerializer):
     solicitante_nombre = serializers.CharField(source='idsolicitante.get_full_name', read_only=True)
     tecnico_nombre = serializers.CharField(source='idtecnicoasignado.get_full_name', read_only=True)
     estado_nombre = serializers.CharField(source='idestadoot.nombreestadoot', read_only=True)
-    tipo_mantenimiento_nombre = serializers.CharField(source='idtipomantenimientoot.nombretipo', read_only=True)
+    tipo_mantenimiento_nombre = serializers.CharField(source='idtipomantenimientoot.nombretipomantenimientoot', read_only=True)
     
     # Campos calculados
     dias_transcurridos = serializers.SerializerMethodField()

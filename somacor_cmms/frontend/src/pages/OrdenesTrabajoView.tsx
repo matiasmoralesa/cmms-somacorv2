@@ -23,11 +23,11 @@ import {
   Calendar,
   User
 } from 'lucide-react';
-import { ordenesTrabajoService } from '@/services/apiService';
 import CreateWorkOrderForm from '@/components/forms/CreateWorkOrderForm';
 import { useRealtimeUpdates } from '@/hooks/useRealtimeUpdates';
 import ConnectionStatus from '@/components/ConnectionStatus';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import apiClient from '@/api/apiClient';
 
 // =================================================================================
 // TIPOS DE DATOS
@@ -44,7 +44,7 @@ interface OrdenTrabajo {
   estado_nombre: string;
   fechareportefalla: string;
   idtipomantenimientoot: number;
-  tipo_mantenimiento?: string;
+  tipo_mantenimiento_nombre?: string;
 }
 
 interface OrdenesStats {
@@ -91,6 +91,7 @@ export default function OrdenesTrabajoView() {
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [selectedPriority, setSelectedPriority] = useState('all');
   const [selectedType, setSelectedType] = useState('all');
+  const [sortBy, setSortBy] = useState('fecha_desc'); // Ordenar por última fecha agregada por defecto
 
   // =================================================================================
   // EFECTOS
@@ -104,7 +105,7 @@ export default function OrdenesTrabajoView() {
 
   useEffect(() => {
     loadOrdenes();
-  }, [searchTerm, selectedStatus, selectedPriority, selectedType]);
+  }, [searchTerm, selectedStatus, selectedPriority, selectedType, sortBy]);
 
   // =================================================================================
   // FUNCIONES
@@ -115,25 +116,31 @@ export default function OrdenesTrabajoView() {
       setLoading(true);
       setError(null);
 
-      const [statsData, filtersData] = await Promise.all([
-        ordenesTrabajoService.getStats(),
-        ordenesTrabajoService.getFilters()
-      ]);
+      // Cargar órdenes para calcular estadísticas
+      const response = await apiClient.get('v2/ordenes-trabajo/');
+      const ordenesData = response.data.results || response.data || [];
 
-      // Transformar las estadísticas al formato esperado
-      const statsTransformados = {
-        total: statsData.total_ordenes || statsData.total || 0,
-        pendientes: statsData.pendientes || 0,
-        enProceso: statsData.en_proceso || 0,
-        completadas: statsData.completadas || 0,
-        canceladas: statsData.canceladas || 0
+      // Calcular estadísticas localmente
+      const statsCalculadas = {
+        pendientes: ordenesData.filter((o: OrdenTrabajo) => 
+          o.estado_nombre === 'Abierta' || o.estado_nombre === 'Pendiente'
+        ).length,
+        enProgreso: ordenesData.filter((o: OrdenTrabajo) => 
+          o.estado_nombre === 'En Progreso' || o.estado_nombre === 'Asignada'
+        ).length,
+        completadas: ordenesData.filter((o: OrdenTrabajo) => 
+          o.estado_nombre === 'Completada'
+        ).length,
+        urgentes: ordenesData.filter((o: OrdenTrabajo) => 
+          o.prioridad === 'Crítica' || o.prioridad === 'Alta'
+        ).length
       };
 
-      setStats(statsTransformados);
-      setFilters(filtersData || { statuses: [], types: [], priorities: [] });
+      setStats(statsCalculadas);
+      setError(null); // Limpiar cualquier error previo
     } catch (err) {
       console.error('Error loading initial data:', err);
-      setError('Error al cargar los datos iniciales');
+      // No mostrar error si las órdenes se cargan correctamente después
     } finally {
       setLoading(false);
     }
@@ -148,16 +155,16 @@ export default function OrdenesTrabajoView() {
       if (selectedPriority !== 'all') params.priority = selectedPriority;
       if (selectedType !== 'all') params.type = selectedType;
 
-      const response = await ordenesTrabajoService.getList(params);
+      const response = await apiClient.get('v2/ordenes-trabajo/', { params });
       
       // Asegurar que ordenes sea siempre un array
       let ordenesData = [];
-      if (response && Array.isArray(response.results)) {
-        ordenesData = response.results;
-      } else if (Array.isArray(response)) {
-        ordenesData = response;
+      if (response.data && Array.isArray(response.data.results)) {
+        ordenesData = response.data.results;
+      } else if (Array.isArray(response.data)) {
+        ordenesData = response.data;
       } else {
-        console.warn('Respuesta inesperada del servicio de órdenes:', response);
+        console.warn('Respuesta inesperada del servicio de órdenes:', response.data);
         ordenesData = [];
       }
       
@@ -257,13 +264,12 @@ export default function OrdenesTrabajoView() {
 
   const handleViewDetails = (orden: OrdenTrabajo) => {
     console.log('Ver detalles de:', orden);
-    navigate(`/ordenes-trabajo/${orden.id}`);
+    navigate(`/ordenes-trabajo/${orden.idordentrabajo}`);
   };
 
   const handleEdit = (orden: OrdenTrabajo) => {
     console.log('Editar orden:', orden);
-    // TODO: Implementar modal de edición
-    alert(`Editar orden ${orden.id} - Funcionalidad en desarrollo`);
+    navigate(`/ordenes-trabajo/${orden.idordentrabajo}`);
   };
 
   const handleDelete = (orden: OrdenTrabajo) => {
@@ -274,23 +280,39 @@ export default function OrdenesTrabajoView() {
     if (!deleteConfirm.orden) return;
     
     try {
-      // TODO: Implementar eliminación en el backend
-      console.log('Eliminando orden:', deleteConfirm.orden.id);
+      await apiClient.delete(`v2/ordenes-trabajo/${deleteConfirm.orden.idordentrabajo}/`);
       
-      // Simular eliminación
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Actualizar lista localmente sin recargar
+      const ordenesActualizadas = ordenes.filter(o => o.idordentrabajo !== deleteConfirm.orden!.idordentrabajo);
+      setOrdenes(ordenesActualizadas);
       
-      // Actualizar lista
-      setOrdenes(ordenes.filter(o => o.id !== deleteConfirm.orden!.id));
+      // Actualizar estadísticas localmente
+      if (stats) {
+        const ordenEliminada = deleteConfirm.orden;
+        const nuevasStats = { ...stats };
+        
+        if (ordenEliminada.estado_nombre === 'Abierta' || ordenEliminada.estado_nombre === 'Pendiente') {
+          nuevasStats.pendientes = Math.max(0, nuevasStats.pendientes - 1);
+        } else if (ordenEliminada.estado_nombre === 'En Progreso' || ordenEliminada.estado_nombre === 'Asignada') {
+          nuevasStats.enProgreso = Math.max(0, nuevasStats.enProgreso - 1);
+        } else if (ordenEliminada.estado_nombre === 'Completada') {
+          nuevasStats.completadas = Math.max(0, nuevasStats.completadas - 1);
+        }
+        
+        if (ordenEliminada.prioridad === 'Crítica' || ordenEliminada.prioridad === 'Alta') {
+          nuevasStats.urgentes = Math.max(0, nuevasStats.urgentes - 1);
+        }
+        
+        setStats(nuevasStats);
+      }
       
-      // Cerrar modal
+      // Cerrar modal y limpiar error
       setDeleteConfirm({isOpen: false, orden: null});
-      
-      // Mostrar mensaje de éxito
-      alert('Orden de trabajo eliminada exitosamente');
-    } catch (err) {
+      setError(null);
+    } catch (err: any) {
       console.error('Error eliminando orden:', err);
-      alert('Error al eliminar la orden de trabajo');
+      setError(`Error al eliminar la orden: ${err.response?.data?.detail || err.message}`);
+      setDeleteConfirm({isOpen: false, orden: null});
     }
   };
 
@@ -419,11 +441,23 @@ export default function OrdenesTrabajoView() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos los estados</SelectItem>
-                {filters.statuses.map((status) => (
-                  <SelectItem key={status} value={status}>
-                    {status}
-                  </SelectItem>
-                ))}
+                <SelectItem value="Abierta">Abierta</SelectItem>
+                <SelectItem value="Asignada">Asignada</SelectItem>
+                <SelectItem value="En Progreso">En Progreso</SelectItem>
+                <SelectItem value="Completada">Completada</SelectItem>
+                <SelectItem value="Cancelada">Cancelada</SelectItem>
+              </SelectContent>
+            </Select>
+            
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger className="w-full sm:w-48">
+                <SelectValue placeholder="Ordenar por" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="fecha_desc">Más recientes primero</SelectItem>
+                <SelectItem value="fecha_asc">Más antiguas primero</SelectItem>
+                <SelectItem value="prioridad">Por prioridad</SelectItem>
+                <SelectItem value="numero">Por número de OT</SelectItem>
               </SelectContent>
             </Select>
 
@@ -433,11 +467,10 @@ export default function OrdenesTrabajoView() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todas las prioridades</SelectItem>
-                {filters.priorities.map((priority) => (
-                  <SelectItem key={priority} value={priority}>
-                    {priority}
-                  </SelectItem>
-                ))}
+                <SelectItem value="Crítica">Crítica</SelectItem>
+                <SelectItem value="Alta">Alta</SelectItem>
+                <SelectItem value="Media">Media</SelectItem>
+                <SelectItem value="Baja">Baja</SelectItem>
               </SelectContent>
             </Select>
 
@@ -447,11 +480,10 @@ export default function OrdenesTrabajoView() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos los tipos</SelectItem>
-                {filters.types.map((type) => (
-                  <SelectItem key={type} value={type}>
-                    {type}
-                  </SelectItem>
-                ))}
+                <SelectItem value="Preventivo">Preventivo</SelectItem>
+                <SelectItem value="Correctivo">Correctivo</SelectItem>
+                <SelectItem value="Predictivo">Predictivo</SelectItem>
+                <SelectItem value="Emergencia">Emergencia</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -503,8 +535,8 @@ export default function OrdenesTrabajoView() {
                       <TableCell>{orden.equipo_nombre}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          {getTypeIcon(orden.tipo_mantenimiento || '')}
-                          {orden.tipo_mantenimiento || 'N/A'}
+                          {getTypeIcon(orden.tipo_mantenimiento_nombre || '')}
+                          {orden.tipo_mantenimiento_nombre || 'N/A'}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -571,13 +603,13 @@ export default function OrdenesTrabajoView() {
       />
 
       {/* Diálogo de confirmación de eliminación */}
-      <AlertDialog open={deleteConfirm.isOpen} onOpenChange={setDeleteConfirm}>
+      <AlertDialog open={deleteConfirm.isOpen} onOpenChange={(open) => !open && cancelDelete()}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>¿Eliminar orden de trabajo?</AlertDialogTitle>
             <AlertDialogDescription>
               Esta acción no se puede deshacer. Se eliminará permanentemente la orden de trabajo{' '}
-              <strong>WO-{deleteConfirm.orden?.id.toString().padStart(3, '0')}</strong>.
+              <strong>{deleteConfirm.orden?.numeroot}</strong>.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

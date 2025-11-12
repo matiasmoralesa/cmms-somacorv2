@@ -314,13 +314,21 @@ export default function CreateWorkOrderForm({ isOpen, onClose, onSuccess }: Crea
 
             {/* Fecha Programada */}
             <div className="space-y-2">
-              <Label htmlFor="fechaProgramada">Fecha Programada</Label>
+              <Label htmlFor="fechaProgramada" className="flex items-center gap-2">
+                <Calendar className="h-4 w-4" />
+                Fecha y Hora Programada
+              </Label>
               <Input
                 id="fechaProgramada"
                 type="datetime-local"
                 value={formData.fechaProgramada}
                 onChange={(e) => handleInputChange('fechaProgramada', e.target.value)}
+                className="w-full"
+                placeholder="Seleccione fecha y hora"
               />
+              <p className="text-xs text-muted-foreground">
+                Seleccione la fecha y hora programada para la ejecución
+              </p>
             </div>
 
             {/* Observaciones */}

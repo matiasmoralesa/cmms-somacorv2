@@ -23,6 +23,7 @@ from django.conf.urls.static import static
 # --- FIN DE LA MODIFICACIÓN ---
 
 from django.http import HttpResponse, JsonResponse
+from cmms_api.views_health import health_check, readiness_check, liveness_check
 
 def test_api(request):
     return HttpResponse("API funcionando correctamente")
@@ -39,6 +40,11 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/test/', test_api, name='test_api'),
     path('api/', include('cmms_api.urls')),  # APIs principales con V2
+    
+    # Health check endpoints (públicos para monitoreo)
+    path('health/', health_check, name='health_check'),
+    path('health/ready/', readiness_check, name='readiness_check'),
+    path('health/live/', liveness_check, name='liveness_check'),
     
     # Fallbacks para WebSockets (evitar errores 404)
     path('ws/notifications/', websocket_fallback, {'endpoint': 'notifications'}, name='ws_notifications_fallback'),

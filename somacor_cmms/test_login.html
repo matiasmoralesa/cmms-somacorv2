@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test de Login - Somacor CMMS</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #1d4ed8;
+        }
+        button:disabled {
+            background-color: #9ca3af;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 4px;
+            display: none;
+        }
+        .success {
+            background-color: #d1fae5;
+            border: 1px solid #10b981;
+            color: #065f46;
+        }
+        .error {
+            background-color: #fee2e2;
+            border: 1px solid #ef4444;
+            color: #991b1b;
+        }
+        .info {
+            background-color: #dbeafe;
+            border: 1px solid #3b82f6;
+            color: #1e40af;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        .log {
+            background-color: #f9fafb;
+            border: 1px solid #e5e7eb;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .log-entry {
+            margin: 5px 0;
+            padding: 5px;
+        }
+        .log-info { color: #2563eb; }
+        .log-success { color: #10b981; }
+        .log-error { color: #ef4444; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Test de Login - Somacor CMMS</h1>
+        
+        <div class="info">
+            <strong>Instrucciones:</strong>
+            <ol>
+                <li>Asegúrate de que el backend esté corriendo en <code>http://localhost:8000</code></li>
+                <li>Haz clic en "Probar Login"</li>
+                <li>Revisa los logs para ver qué está pasando</li>
+            </ol>
+        </div>
+
+        <div class="form-group">
+            <label for="username">Usuario:</label>
+            <input type="text" id="username" value="admin" />
+        </div>
+
+        <div class="form-group">
+            <label for="password">Contraseña:</label>
+            <input type="password" id="password" value="admin123" />
+        </div>
+
+        <button id="testBtn" onclick="testLogin()">Probar Login</button>
+
+        <div id="result" class="result"></div>
+
+        <div class="log" id="log">
+            <div class="log-entry log-info">Esperando prueba...</div>
+        </div>
+    </div>
+
+    <script>
+        function addLog(message, type = 'info') {
+            const log = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        async function testLogin() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const resultDiv = document.getElementById('result');
+            const testBtn = document.getElementById('testBtn');
+
+            // Limpiar resultado anterior
+            resultDiv.style.display = 'none';
+            resultDiv.className = 'result';
+            
+            // Limpiar log
+            document.getElementById('log').innerHTML = '';
+
+            // Deshabilitar botón
+            testBtn.disabled = true;
+            testBtn.textContent = 'Probando...';
+
+            addLog('🔵 Iniciando prueba de login...', 'info');
+            addLog(`Usuario: ${username}`, 'info');
+            addLog('URL: http://localhost:8000/api/login/', 'info');
+
+            try {
+                addLog('📡 Enviando petición POST...', 'info');
+                
+                const response = await fetch('http://localhost:8000/api/login/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        username: username,
+                        password: password
+                    })
+                });
+
+                addLog(`📥 Respuesta recibida: ${response.status} ${response.statusText}`, 'info');
+
+                const data = await response.json();
+                addLog('📦 Datos parseados correctamente', 'success');
+
+                if (response.ok) {
+                    addLog('✅ Login exitoso!', 'success');
+                    addLog(`Token: ${data.token.substring(0, 20)}...`, 'success');
+                    addLog(`Usuario: ${data.user.username}`, 'success');
+                    addLog(`Rol: ${data.rol.nombre}`, 'success');
+
+                    resultDiv.className = 'result success';
+                    resultDiv.innerHTML = `
+                        <strong>✅ Login Exitoso!</strong><br>
+                        Token: ${data.token.substring(0, 30)}...<br>
+                        Usuario: ${data.user.username}<br>
+                        Rol: ${data.rol.nombre}
+                    `;
+                    resultDiv.style.display = 'block';
+                } else {
+                    addLog('❌ Login fallido', 'error');
+                    addLog(`Error: ${data.detail || data.message || 'Error desconocido'}`, 'error');
+
+                    resultDiv.className = 'result error';
+                    resultDiv.innerHTML = `
+                        <strong>❌ Error en Login</strong><br>
+                        ${data.detail || data.message || 'Error desconocido'}
+                    `;
+                    resultDiv.style.display = 'block';
+                }
+            } catch (error) {
+                addLog('❌ Error de conexión', 'error');
+                addLog(`Detalles: ${error.message}`, 'error');
+                
+                if (error.message.includes('Failed to fetch')) {
+                    addLog('⚠️ Posibles causas:', 'error');
+                    addLog('1. El backend no está corriendo', 'error');
+                    addLog('2. CORS no está configurado', 'error');
+                    addLog('3. El navegador está bloqueando la petición', 'error');
+                    addLog('4. El navegador está forzando HTTPS', 'error');
+                }
+
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `
+                    <strong>❌ Error de Conexión</strong><br>
+                    ${error.message}<br><br>
+                    <strong>Posibles causas:</strong><br>
+                    1. El backend no está corriendo en http://localhost:8000<br>
+                    2. CORS no está configurado correctamente<br>
+                    3. El navegador está bloqueando la petición<br>
+                    4. El navegador está forzando HTTPS (limpia HSTS)
+                `;
+                resultDiv.style.display = 'block';
+            } finally {
+                testBtn.disabled = false;
+                testBtn.textContent = 'Probar Login';
+                addLog('🏁 Prueba finalizada', 'info');
+            }
+        }
+
+        // Permitir Enter para enviar
+        document.getElementById('password').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                testLogin();
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Dashboard API</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 3px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f9f9f9;
+            border-left: 4px solid #2196F3;
+        }
+        .success {
+            color: #4CAF50;
+            font-weight: bold;
+        }
+        .error {
+            color: #f44336;
+            font-weight: bold;
+        }
+        pre {
+            background: #263238;
+            color: #aed581;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        button {
+            background: #2196F3;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button:hover {
+            background: #1976D2;
+        }
+        .chart {
+            margin: 20px 0;
+            padding: 20px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .bar {
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
+        }
+        .bar-label {
+            width: 100px;
+            font-size: 14px;
+        }
+        .bar-visual {
+            height: 30px;
+            background: #4CAF50;
+            margin: 0 10px;
+            border-radius: 4px;
+            transition: width 0.3s;
+        }
+        .bar-value {
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Test Dashboard API</h1>
+        
+        <div class="test-section">
+            <h2>1. Test de Conectividad</h2>
+            <button onclick="testConnection()">Probar Conexión</button>
+            <div id="connection-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>2. Test Monthly Data</h2>
+            <button onclick="testMonthlyData()">Obtener Datos Mensuales</button>
+            <div id="monthly-result"></div>
+            <div id="monthly-chart" class="chart"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>3. Test Stats</h2>
+            <button onclick="testStats()">Obtener Estadísticas</button>
+            <div id="stats-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>4. Test Maintenance Types</h2>
+            <button onclick="testMaintenanceTypes()">Obtener Tipos de Mantenimiento</button>
+            <div id="maintenance-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>5. Test Recent Work Orders</h2>
+            <button onclick="testRecentOrders()">Obtener Órdenes Recientes</button>
+            <div id="orders-result"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000/api/v2/dashboard/';
+
+        async function testConnection() {
+            const resultDiv = document.getElementById('connection-result');
+            resultDiv.innerHTML = '<p>Probando conexión...</p>';
+            
+            try {
+                const response = await fetch(API_BASE + 'stats/');
+                if (response.ok) {
+                    resultDiv.innerHTML = '<p class="success">✅ Conexión exitosa! Status: ' + response.status + '</p>';
+                } else {
+                    resultDiv.innerHTML = '<p class="error">❌ Error: Status ' + response.status + '</p>';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = '<p class="error">❌ Error de red: ' + error.message + '</p>';
+            }
+        }
+
+        async function testMonthlyData() {
+            const resultDiv = document.getElementById('monthly-result');
+            const chartDiv = document.getElementById('monthly-chart');
+            resultDiv.innerHTML = '<p>Cargando datos mensuales...</p>';
+            
+            try {
+                const response = await fetch(API_BASE + 'monthly_data/');
+                const data = await response.json();
+                
+                resultDiv.innerHTML = '<p class="success">✅ Datos recibidos: ' + data.length + ' meses</p>';
+                resultDiv.innerHTML += '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+                
+                // Crear gráfico simple
+                chartDiv.innerHTML = '<h3>Gráfico de Órdenes por Mes</h3>';
+                data.forEach(item => {
+                    const total = item.completadas + item.pendientes;
+                    const width = (total / 200) * 100; // Escala para visualización
+                    
+                    chartDiv.innerHTML += `
+                        <div class="bar">
+                            <div class="bar-label">${item.month}</div>
+                            <div class="bar-visual" style="width: ${width}%"></div>
+                            <div class="bar-value">${total} (${item.completadas}C + ${item.pendientes}P)</div>
+                        </div>
+                    `;
+                });
+                
+            } catch (error) {
+                resultDiv.innerHTML = '<p class="error">❌ Error: ' + error.message + '</p>';
+            }
+        }
+
+        async function testStats() {
+            const resultDiv = document.getElementById('stats-result');
+            resultDiv.innerHTML = '<p>Cargando estadísticas...</p>';
+            
+            try {
+                const response = await fetch(API_BASE + 'stats/');
+                const data = await response.json();
+                
+                resultDiv.innerHTML = '<p class="success">✅ Estadísticas recibidas</p>';
+                resultDiv.innerHTML += '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+            } catch (error) {
+                resultDiv.innerHTML = '<p class="error">❌ Error: ' + error.message + '</p>';
+            }
+        }
+
+        async function testMaintenanceTypes() {
+            const resultDiv = document.getElementById('maintenance-result');
+            resultDiv.innerHTML = '<p>Cargando tipos de mantenimiento...</p>';
+            
+            try {
+                const response = await fetch(API_BASE + 'maintenance_types/');
+                const data = await response.json();
+                
+                resultDiv.innerHTML = '<p class="success">✅ Tipos recibidos: ' + data.length + '</p>';
+                resultDiv.innerHTML += '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+            } catch (error) {
+                resultDiv.innerHTML = '<p class="error">❌ Error: ' + error.message + '</p>';
+            }
+        }
+
+        async function testRecentOrders() {
+            const resultDiv = document.getElementById('orders-result');
+            resultDiv.innerHTML = '<p>Cargando órdenes recientes...</p>';
+            
+            try {
+                const response = await fetch(API_BASE + 'recent_work_orders/');
+                const data = await response.json();
+                
+                resultDiv.innerHTML = '<p class="success">✅ Órdenes recibidas: ' + data.length + '</p>';
+                resultDiv.innerHTML += '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+            } catch (error) {
+                resultDiv.innerHTML = '<p class="error">❌ Error: ' + error.message + '</p>';
+            }
+        }
+
+        // Auto-test al cargar
+        window.onload = function() {
+            console.log('Página de test cargada');
+            console.log('API Base:', API_BASE);
+        };
+    </script>
+</body>
+</html>

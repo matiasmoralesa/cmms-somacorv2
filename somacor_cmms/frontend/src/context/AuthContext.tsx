@@ -77,7 +77,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     // Función de login que maneja la autenticación real
     const login = async (username: string, password: string) => {
-        const response = await apiClient.post<{ token: string; user: User; rol: any }>('/login/', { username, password });
+        const response = await apiClient.post<{ token: string; user: User; rol: any }>('login/', { username, password });
         const { token: newToken, user: newUser, rol } = response.data;
         
         // Guardar datos en localStorage
@@ -93,7 +93,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     // Al cerrar sesión, limpiar todo y redireccionar al login
     const logout = () => {
-        apiClient.post('/logout/').catch(err => console.error("Logout API call failed", err));
+        apiClient.post('logout/').catch(err => console.error("Logout API call failed", err));
         localStorage.removeItem('authToken');
         localStorage.removeItem('userInfo');
         localStorage.removeItem('userRole');

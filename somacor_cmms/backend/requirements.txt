@@ -91,3 +91,15 @@ zopfli==0.2.3.post1
 django-filter==24.3
 channels==4.2.0
 channels-redis==4.2.1
+
+# Dependencias adicionales para producción
+psycopg2-binary==2.9.9  # PostgreSQL
+gunicorn==21.2.0  # Servidor WSGI
+whitenoise==6.6.0  # Archivos estáticos
+redis==5.0.1  # Cache
+django-redis==5.4.0  # Cache backend
+psutil==5.9.6  # Health checks de sistema
+sentry-sdk==1.38.0  # Monitoreo de errores
+django-ratelimit==4.1.0  # Rate limiting
+django-axes==6.1.1  # Protección contra fuerza bruta
+celery==5.3.4  # Tareas asíncronas

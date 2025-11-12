@@ -39,6 +39,10 @@ def generar_numero_ot_unico(equipo, tipo_mantenimiento='CORR'):
     return f"OT-{tipo_mantenimiento}-{equipo.codigointerno or equipo.idequipo}-{timezone.now().strftime('%Y%m%d%H%M%S')}-{uuid_suffix}"
 
 # --- Vistas de Autenticación ---
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
+
+@method_decorator(csrf_exempt, name='dispatch')
 class CustomAuthToken(ObtainAuthToken):
     def post(self, request, *args, **kwargs):
         serializer = self.serializer_class(data=request.data, context={'request': request})

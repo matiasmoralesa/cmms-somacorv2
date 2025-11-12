@@ -26,8 +26,8 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import CreateChecklistForm from '@/components/forms/CreateChecklistForm';
-import { checklistService } from '@/services/checklistService';
+// import CreateChecklistForm from '@/components/forms/CreateChecklistForm'; // Temporalmente deshabilitado
+import { checklistService } from '@/services/apiService';
 
 // =================================================================================
 // TIPOS DE DATOS
@@ -74,74 +74,6 @@ const ChecklistView: React.FC = () => {
   const [selectedChecklist, setSelectedChecklist] = useState<Checklist | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
-  // Datos de ejemplo para el diseño
-  const mockChecklists: Checklist[] = [
-    {
-      id: 1,
-      name: 'Checklist Diario Compresor A-101',
-      equipment: 'Compresor de Aire Principal',
-      equipmentCode: 'EQ-001',
-      technician: 'Juan Pérez',
-      date: '2024-10-15',
-      status: 'completado',
-      totalItems: 15,
-      completedItems: 14,
-      failedItems: 1,
-      observations: 'Equipo en buen estado general, se detectó fuga menor en válvula de drenaje',
-      images: ['checklist_1.jpg', 'valve_leak.jpg'],
-      createdAt: '2024-10-15',
-      completedAt: '2024-10-15'
-    },
-    {
-      id: 2,
-      name: 'Checklist Semanal Bomba B-205',
-      equipment: 'Bomba Centrífuga B-205',
-      equipmentCode: 'EQ-002',
-      technician: 'María García',
-      date: '2024-10-16',
-      status: 'en_progreso',
-      totalItems: 12,
-      completedItems: 8,
-      failedItems: 0,
-      createdAt: '2024-10-16'
-    },
-    {
-      id: 3,
-      name: 'Checklist Mensual Motor C-310',
-      equipment: 'Motor Eléctrico C-310',
-      equipmentCode: 'EQ-003',
-      technician: 'Carlos López',
-      date: '2024-10-17',
-      status: 'pendiente',
-      totalItems: 20,
-      completedItems: 0,
-      failedItems: 0,
-      createdAt: '2024-10-17'
-    },
-    {
-      id: 4,
-      name: 'Checklist Trimestral Válvula D-115',
-      equipment: 'Válvula de Control D-115',
-      equipmentCode: 'EQ-004',
-      technician: 'Ana Martínez',
-      date: '2024-10-18',
-      status: 'cancelado',
-      totalItems: 8,
-      completedItems: 3,
-      failedItems: 0,
-      observations: 'Cancelado por falta de repuestos necesarios',
-      createdAt: '2024-10-18'
-    }
-  ];
-
-  const mockStats: ChecklistStats = {
-    totalChecklists: 24,
-    pendingChecklists: 8,
-    inProgressChecklists: 5,
-    completedChecklists: 11,
-    averageCompletion: 85
-  };
-
   useEffect(() => {
     fetchData();
   }, []);
@@ -151,16 +83,83 @@ const ChecklistView: React.FC = () => {
       setLoading(true);
       setError('');
       
-      // TODO: Cargar datos reales del backend
-      // const data = await checklistService.getInstances();
-      // setChecklists(data.results);
+      // Cargar datos reales del backend
+      let checklistsData = [];
       
-      // Usar datos mock por ahora
-      setChecklists(mockChecklists);
-      setStats(mockStats);
+      try {
+        const data = await checklistService.instances.getAll();
+        checklistsData = data.results || data.data || data || [];
+      } catch (apiError) {
+        console.warn("Endpoint de checklist instances no disponible, usando array vacío");
+        checklistsData = [];
+      }
+      
+      // Validar que checklistsData sea un array
+      if (!Array.isArray(checklistsData)) {
+        console.warn("Los datos recibidos no son un array:", checklistsData);
+        checklistsData = [];
+      }
+      
+      // Mapear datos del backend al formato del componente
+      const mappedChecklists: Checklist[] = checklistsData.map((cl: any) => {
+        // Validar que cl existe y tiene propiedades
+        if (!cl || typeof cl !== 'object') {
+          return null;
+        }
+        
+        return {
+          id: cl.id || cl.idchecklist || 0,
+          name: cl.nombre || cl.template?.nombre || 'Checklist sin nombre',
+          equipment: cl.equipo?.nombreequipo || 'Equipo desconocido',
+          equipmentCode: cl.equipo?.codigointerno || 'N/A',
+          technician: cl.responsable?.nombre || cl.responsable || 'Sin asignar',
+          date: cl.fecha || cl.fechacreacion || new Date().toISOString().split('T')[0],
+          status: cl.estado || 'pendiente',
+          totalItems: cl.total_items || 0,
+          completedItems: cl.items_completados || 0,
+          failedItems: cl.items_fallidos || 0,
+          observations: cl.observaciones || '',
+          images: cl.imagenes || [],
+          createdAt: cl.fechacreacion || new Date().toISOString(),
+          completedAt: cl.fechacompletado || undefined
+        };
+      }).filter(Boolean) as Checklist[]; // Filtrar nulls
+      
+      setChecklists(mappedChecklists);
+      
+      // Calcular estadísticas
+      const stats: ChecklistStats = {
+        totalChecklists: mappedChecklists.length,
+        pendingChecklists: mappedChecklists.filter(c => c.status === 'pendiente').length,
+        inProgressChecklists: mappedChecklists.filter(c => c.status === 'en_progreso').length,
+        completedChecklists: mappedChecklists.filter(c => c.status === 'completado').length,
+        averageCompletion: mappedChecklists.length > 0 
+          ? Math.round(mappedChecklists.reduce((acc, c) => {
+              const percentage = c.totalItems > 0 ? (c.completedItems / c.totalItems * 100) : 0;
+              return acc + percentage;
+            }, 0) / mappedChecklists.length)
+          : 0
+      };
+      
+      setStats(stats);
+      
+      // Si no hay datos, mostrar mensaje informativo
+      if (mappedChecklists.length === 0) {
+        console.info("No hay checklists disponibles en el sistema");
+      }
+      
     } catch (err) {
       console.error("Error fetching checklists data:", err);
-      setError("No se pudo cargar la información de checklists.");
+      setError("No se pudo cargar la información de checklists. El módulo de checklists puede no estar configurado aún.");
+      // En caso de error, mostrar arrays vacíos
+      setChecklists([]);
+      setStats({
+        totalChecklists: 0,
+        pendingChecklists: 0,
+        inProgressChecklists: 0,
+        completedChecklists: 0,
+        averageCompletion: 0
+      });
     } finally {
       setLoading(false);
     }
@@ -490,13 +489,21 @@ const ChecklistView: React.FC = () => {
       </ContentGrid>
 
       {/* Formulario de creación de checklist */}
-      <CreateChecklistForm
-        isOpen={showCreateForm}
-        onClose={() => setShowCreateForm(false)}
-        onSuccess={() => {
-          fetchData();
-        }}
-      />
+      {/* Temporalmente deshabilitado hasta que los endpoints estén disponibles */}
+      {showCreateForm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg max-w-md">
+            <h3 className="text-lg font-semibold mb-4">Crear Checklist</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              El formulario de creación de checklists estará disponible próximamente.
+              Por favor, use la vista "Ejecutar Checklist Diario" en el menú de Checklist.
+            </p>
+            <Button onClick={() => setShowCreateForm(false)}>
+              Cerrar
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Diálogo de confirmación de eliminación */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>

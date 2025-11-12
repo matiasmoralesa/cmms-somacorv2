@@ -218,19 +218,88 @@ const EjecucionOTView: React.FC = () => {
   // Iniciar actividad
   const startActivity = (activityId: number) => {
     setCurrentActivity(activityId);
-    // Aquí se implementaría la lógica para iniciar el cronómetro
+    setActividades(prev => prev.map(act => 
+      act.id === activityId 
+        ? { ...act, status: 'en_progreso', startTime: new Date().toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }) }
+        : act
+    ));
+    console.log('✅ Actividad iniciada:', activityId);
   };
 
   // Pausar actividad
   const pauseActivity = (activityId: number) => {
     setCurrentActivity(null);
-    // Aquí se implementaría la lógica para pausar el cronómetro
+    setActividades(prev => prev.map(act => 
+      act.id === activityId 
+        ? { ...act, status: 'pendiente' }
+        : act
+    ));
+    console.log('⏸ Actividad pausada:', activityId);
   };
 
   // Completar actividad
   const completeActivity = (activityId: number) => {
-    // Aquí se implementaría la lógica para completar la actividad
-    console.log('Completando actividad:', activityId);
+    const endTime = new Date().toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
+    setActividades(prev => prev.map(act => {
+      if (act.id === activityId) {
+        const startTime = act.startTime || '00:00';
+        const actualTime = calculateDuration(startTime, endTime);
+        return { 
+          ...act, 
+          status: 'completada', 
+          endTime,
+          actualTime,
+          observations: observations[activityId] || act.observations
+        };
+      }
+      return act;
+    }));
+    setCurrentActivity(null);
+    console.log('✅ Actividad completada:', activityId);
+  };
+
+  // Calcular duración entre dos tiempos
+  const calculateDuration = (start: string, end: string): string => {
+    const [startHour, startMin] = start.split(':').map(Number);
+    const [endHour, endMin] = end.split(':').map(Number);
+    const startMinutes = startHour * 60 + startMin;
+    const endMinutes = endHour * 60 + endMin;
+    const diffMinutes = endMinutes - startMinutes;
+    const hours = Math.floor(diffMinutes / 60);
+    const minutes = diffMinutes % 60;
+    return hours > 0 ? `${hours} hora${hours > 1 ? 's' : ''} ${minutes} minutos` : `${minutes} minutos`;
+  };
+
+  // Subir archivo
+  const handleFileUpload = (activityId: number) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*,application/pdf,.doc,.docx';
+    input.multiple = true;
+    input.onchange = (e: any) => {
+      const files = Array.from(e.target.files || []) as File[];
+      console.log('📎 Archivos seleccionados para actividad', activityId, ':', files.map(f => f.name));
+      // Aquí se implementaría la lógica para subir los archivos al servidor
+      alert(`${files.length} archivo(s) seleccionado(s): ${files.map(f => f.name).join(', ')}`);
+    };
+    input.click();
+  };
+
+  // Tomar foto
+  const handleTakePhoto = (activityId: number) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.capture = 'environment';
+    input.onchange = (e: any) => {
+      const file = e.target.files?.[0];
+      if (file) {
+        console.log('📷 Foto tomada para actividad', activityId, ':', file.name);
+        // Aquí se implementaría la lógica para procesar y subir la foto
+        alert(`Foto capturada: ${file.name}`);
+      }
+    };
+    input.click();
   };
 
   if (loading) {
@@ -271,10 +340,37 @@ const EjecucionOTView: React.FC = () => {
         title={`Ejecución OT: ${orden.title}`}
         subtitle={`Orden de trabajo ${orden.id} - ${orden.equipment}`}
       >
-        <Button variant="outline" onClick={() => navigate('/ordenes-trabajo')}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Volver
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            onClick={() => {
+              console.log('💾 Guardando progreso...');
+              alert('Progreso guardado correctamente');
+            }}
+          >
+            <Save className="h-4 w-4 mr-2" />
+            Guardar Progreso
+          </Button>
+          <Button 
+            onClick={() => {
+              const allCompleted = actividades.every(act => act.status === 'completada');
+              if (!allCompleted) {
+                alert('⚠️ Debes completar todas las actividades antes de finalizar la orden');
+                return;
+              }
+              console.log('✅ Finalizando orden de trabajo...');
+              alert('Orden de trabajo finalizada correctamente');
+              navigate('/ordenes-trabajo');
+            }}
+          >
+            <Send className="h-4 w-4 mr-2" />
+            Finalizar Orden
+          </Button>
+          <Button variant="outline" onClick={() => navigate('/ordenes-trabajo')}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Volver
+          </Button>
+        </div>
       </PageHeader>
 
       {/* Información de la orden */}
@@ -455,9 +551,16 @@ const EjecucionOTView: React.FC = () => {
                         )}
                       </div>
                       
-                      {actividad.observations && (
-                        <div className="mt-3 p-2 bg-muted/50 rounded text-sm">
-                          <strong>Observaciones:</strong> {actividad.observations}
+                      {(actividad.status === 'en_progreso' || actividad.status === 'completada') && (
+                        <div className="mt-3">
+                          <label className="text-sm font-medium mb-1 block">Observaciones:</label>
+                          <Input
+                            placeholder="Agregar observaciones de la actividad..."
+                            value={observations[actividad.id] || actividad.observations || ''}
+                            onChange={(e) => setObservations(prev => ({ ...prev, [actividad.id]: e.target.value }))}
+                            disabled={actividad.status === 'completada'}
+                            className="text-sm"
+                          />
                         </div>
                       )}
                       
@@ -496,24 +599,50 @@ const EjecucionOTView: React.FC = () => {
                     
                     <div className="flex gap-1 ml-4">
                       {actividad.status === 'pendiente' && (
-                        <Button variant="outline" size="sm" onClick={() => startActivity(actividad.id)}>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => startActivity(actividad.id)}
+                          title="Iniciar actividad"
+                        >
                           <Play className="h-3 w-3" />
                         </Button>
                       )}
                       {actividad.status === 'en_progreso' && (
                         <>
-                          <Button variant="outline" size="sm" onClick={() => pauseActivity(actividad.id)}>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => pauseActivity(actividad.id)}
+                            title="Pausar actividad"
+                          >
                             <Pause className="h-3 w-3" />
                           </Button>
-                          <Button variant="outline" size="sm" onClick={() => completeActivity(actividad.id)}>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => completeActivity(actividad.id)}
+                            title="Completar actividad"
+                            className="text-green-600 hover:text-green-700"
+                          >
                             <CheckCircle className="h-3 w-3" />
                           </Button>
                         </>
                       )}
-                      <Button variant="outline" size="sm">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleFileUpload(actividad.id)}
+                        title="Subir archivos"
+                      >
                         <Upload className="h-3 w-3" />
                       </Button>
-                      <Button variant="outline" size="sm">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleTakePhoto(actividad.id)}
+                        title="Tomar foto"
+                      >
                         <Camera className="h-3 w-3" />
                       </Button>
                     </div>

@@ -2,6 +2,8 @@
 
 Sistema completo de gestión de mantenimiento (CMMS) para Somacor.
 
+> 📚 **Documentación Completa:** Ver [DOCUMENTACION_COMPLETA_PROYECTO.md](./DOCUMENTACION_COMPLETA_PROYECTO.md) para información detallada sobre optimizaciones, implementación y guías de uso.
+
 ## 🚀 Características
 
 - **Backend Django REST Framework**: API robusta con autenticación JWT

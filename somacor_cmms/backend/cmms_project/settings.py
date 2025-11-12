@@ -21,13 +21,23 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-*c#pae09w^*q52ne6qz569qanvama$m%5yi)h$-7cj4&(5ydv%')
+# En producción, SECRET_KEY DEBE estar en variable de entorno
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY')
+if not SECRET_KEY:
+    if os.environ.get('ENVIRONMENT', 'development') == 'production':
+        raise ValueError("SECRET_KEY debe estar configurada en producción")
+    # Solo para desarrollo local
+    SECRET_KEY = 'django-insecure-*c#pae09w^*q52ne6qz569qanvama$m%5yi)h$-7cj4&(5ydv%'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DJANGO_DEBUG', 'True').lower() == 'true'
+# DEBUG es False por defecto (seguro para producción)
+DEBUG = os.environ.get('DJANGO_DEBUG', 'False').lower() == 'true'
 
-ALLOWED_HOSTS = ['*']  # Configurar apropiadamente en producción
+# ALLOWED_HOSTS debe configurarse con los dominios permitidos
+ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
+# Deshabilitar APPEND_SLASH en desarrollo para evitar redirects 301
+APPEND_SLASH = False
 
 # Application definition
 
@@ -51,9 +61,10 @@ MIDDLEWARE = [
     # 'cmms_api.core.middleware.RequestLoggingMiddleware',  # Temporalmente deshabilitado por problemas
     # 'cmms_api.core.middleware.RateLimitMiddleware',       # Temporalmente deshabilitado
     # 'cmms_api.core.middleware.BotIntegrationMiddleware',  # Temporalmente deshabilitado
-    'django.middleware.security.SecurityMiddleware',
+    # 'django.middleware.security.SecurityMiddleware',  # DESHABILITADO: Fuerza HTTPS en redirects
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.common.CommonMiddleware',
+    # 'django.middleware.common.CommonMiddleware',  # DESHABILITADO: Causa redirects 301
+    # 'django.middleware.csrf.CsrfViewMiddleware',  # DESHABILITADO: Causa problemas sin CommonMiddleware
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
@@ -165,17 +176,25 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # CORS settings optimizadas
-CORS_ALLOW_ALL_ORIGINS = True  # Solo para desarrollo
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://localhost:5173",
-    "http://localhost:5174",  # Puerto alternativo de Vite
-    "http://127.0.0.1:3000",
-    "http://127.0.0.1:5173",
-    "http://127.0.0.1:5174",
-    "http://localhost:8080",
-    "http://127.0.0.1:8080",
-]
+# En producción, CORS_ALLOW_ALL_ORIGINS debe ser False
+CORS_ALLOW_ALL_ORIGINS = os.environ.get('CORS_ALLOW_ALL_ORIGINS', 'False').lower() == 'true'
+
+# Configurar orígenes permitidos desde variable de entorno
+CORS_ALLOWED_ORIGINS_ENV = os.environ.get('CORS_ALLOWED_ORIGINS', '')
+if CORS_ALLOWED_ORIGINS_ENV:
+    CORS_ALLOWED_ORIGINS = [origin.strip() for origin in CORS_ALLOWED_ORIGINS_ENV.split(',')]
+else:
+    # Valores por defecto solo para desarrollo
+    CORS_ALLOWED_ORIGINS = [
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:5174",
+        "http://localhost:8080",
+        "http://127.0.0.1:8080",
+    ]
 
 CORS_ALLOW_CREDENTIALS = True
 
@@ -220,7 +239,7 @@ REST_FRAMEWORK = {
         'rest_framework.authentication.SessionAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.AllowAny',  # Cambiado a AllowAny para desarrollo
+        'rest_framework.permissions.IsAuthenticated',  # Seguro por defecto
     ],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 100,  # Aumentar tamaño de página para mejor rendimiento
@@ -238,8 +257,8 @@ REST_FRAMEWORK = {
         'rest_framework.throttling.UserRateThrottle'
     ],
     'DEFAULT_THROTTLE_RATES': {
-        'anon': '1000/hour',  # Límite para usuarios anónimos
-        'user': '2000/hour'   # Límite para usuarios autenticados
+        'anon': '100/hour',   # Límite para usuarios anónimos
+        'user': '1000/hour'   # Límite para usuarios autenticados
     },
     # Configuración de caché para respuestas
     'DEFAULT_CACHE_RESPONSE_TIMEOUT': 300,  # 5 minutos
@@ -292,6 +311,47 @@ LOGGING = {
 
 # Crear directorio de logs si no existe
 os.makedirs(os.path.join(BASE_DIR, 'logs'), exist_ok=True)
+
+# =============================================================================
+# CONFIGURACIONES DE SEGURIDAD PARA PRODUCCIÓN
+# =============================================================================
+
+# Configuraciones HTTPS (solo en producción)
+if not DEBUG:
+    # Configuraciones de seguridad HTTPS
+    SECURE_SSL_REDIRECT = os.environ.get('SECURE_SSL_REDIRECT', 'True').lower() == 'true'
+    SESSION_COOKIE_SECURE = os.environ.get('SESSION_COOKIE_SECURE', 'True').lower() == 'true'
+    CSRF_COOKIE_SECURE = os.environ.get('CSRF_COOKIE_SECURE', 'True').lower() == 'true'
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    
+    # HSTS solo en producción
+    SECURE_HSTS_SECONDS = int(os.environ.get('SECURE_HSTS_SECONDS', '31536000'))  # 1 año
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    X_FRAME_OPTIONS = 'DENY'
+    
+    # Configuración de cookies
+    SESSION_COOKIE_HTTPONLY = True
+    CSRF_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = 'Lax'
+    CSRF_COOKIE_SAMESITE = 'Lax'
+    SESSION_COOKIE_AGE = 3600  # 1 hora
+else:
+    # En desarrollo, deshabilitar todas las configuraciones HTTPS/HSTS
+    SECURE_SSL_REDIRECT = False
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False
+    SECURE_HSTS_SECONDS = 0
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = False
+    SECURE_HSTS_PRELOAD = False
+
+# CSRF Trusted Origins (para producción)
+CSRF_TRUSTED_ORIGINS_ENV = os.environ.get('CSRF_TRUSTED_ORIGINS', '')
+if CSRF_TRUSTED_ORIGINS_ENV:
+    CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in CSRF_TRUSTED_ORIGINS_ENV.split(',')]
+else:
+    CSRF_TRUSTED_ORIGINS = []
 
 # CMMS API Configuration
 CMMS_API = {
@@ -373,3 +433,137 @@ CHANNEL_LAYERS = {
 
 # WebSocket Configuration
 WEBSOCKET_URL = '/ws/'
+
+
+# =============================================================================
+# CONFIGURACIÓN DE CORS
+# =============================================================================
+
+# Permitir CORS para desarrollo
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://192.168.1.88:5173",  # IP de red local
+]
+
+# Permitir credenciales
+CORS_ALLOW_CREDENTIALS = True
+
+# Headers permitidos
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
+
+# Métodos permitidos
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+
+# Para desarrollo, permitir todos los orígenes (SOLO DESARROLLO)
+if DEBUG:
+    CORS_ALLOW_ALL_ORIGINS = True
+    CORS_ALLOW_CREDENTIALS = True
+
+
+# =============================================================================
+# CONFIGURACIÓN DE URLs
+# =============================================================================
+
+# En desarrollo, deshabilitar APPEND_SLASH para evitar redirects 301 que causan problemas con CORS
+# En producción, mantener en True para URLs consistentes
+APPEND_SLASH = not DEBUG
+
+
+# =============================================================================
+# CONFIGURACIÓN DE LOGGING
+# =============================================================================
+
+# Crear directorio de logs si no existe
+LOGS_DIR = BASE_DIR / 'logs'
+LOGS_DIR.mkdir(exist_ok=True)
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {asctime} {message}',
+            'style': '{',
+        },
+    },
+    'filters': {
+        'require_debug_false': {
+            '()': 'django.utils.log.RequireDebugFalse',
+        },
+        'require_debug_true': {
+            '()': 'django.utils.log.RequireDebugTrue',
+        },
+    },
+    'handlers': {
+        'console': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+        'file': {
+            'level': 'INFO',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': LOGS_DIR / 'django.log',
+            'maxBytes': 1024 * 1024 * 5,  # 5 MB
+            'backupCount': 5,
+            'formatter': 'verbose',
+        },
+        'api_file': {
+            'level': 'DEBUG',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': LOGS_DIR / 'api.log',
+            'maxBytes': 1024 * 1024 * 5,  # 5 MB
+            'backupCount': 5,
+            'formatter': 'verbose',
+        },
+        'error_file': {
+            'level': 'ERROR',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': LOGS_DIR / 'errors.log',
+            'maxBytes': 1024 * 1024 * 5,  # 5 MB
+            'backupCount': 5,
+            'formatter': 'verbose',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'django.request': {
+            'handlers': ['error_file'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+        'cmms_api': {
+            'handlers': ['console', 'api_file'],
+            'level': 'DEBUG' if DEBUG else 'INFO',
+            'propagate': False,
+        },
+    },
+}

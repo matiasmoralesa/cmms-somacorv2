@@ -59,67 +59,6 @@ const TiposEquipoView: React.FC = () => {
   const [showEditForm, setShowEditForm] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
-  // Datos de ejemplo para el diseño
-  const mockTiposEquipo: TipoEquipo[] = [
-    {
-      id: 1,
-      name: 'Compresores',
-      description: 'Equipos de compresión de aire y gases para procesos industriales',
-      equipmentCount: 25,
-      maintenanceFrequency: 'Mensual',
-      isActive: true,
-      createdAt: '2024-01-15',
-      lastUpdated: '2024-10-15'
-    },
-    {
-      id: 2,
-      name: 'Bombas',
-      description: 'Bombas centrífugas y de desplazamiento positivo para fluidos',
-      equipmentCount: 18,
-      maintenanceFrequency: 'Bimensual',
-      isActive: true,
-      createdAt: '2024-02-20',
-      lastUpdated: '2024-10-14'
-    },
-    {
-      id: 3,
-      name: 'Motores',
-      description: 'Motores eléctricos de diferentes potencias y aplicaciones',
-      equipmentCount: 32,
-      maintenanceFrequency: 'Trimestral',
-      isActive: true,
-      createdAt: '2024-03-10',
-      lastUpdated: '2024-10-13'
-    },
-    {
-      id: 4,
-      name: 'Válvulas',
-      description: 'Válvulas de control, seguridad y regulación de flujo',
-      equipmentCount: 45,
-      maintenanceFrequency: 'Semestral',
-      isActive: true,
-      createdAt: '2024-04-15',
-      lastUpdated: '2024-10-12'
-    },
-    {
-      id: 5,
-      name: 'Generadores',
-      description: 'Generadores de energía eléctrica de emergencia',
-      equipmentCount: 8,
-      maintenanceFrequency: 'Mensual',
-      isActive: false,
-      createdAt: '2024-05-20',
-      lastUpdated: '2024-09-20'
-    }
-  ];
-
-  const mockStats: TipoEquipoStats = {
-    totalTipos: 12,
-    activeTipos: 10,
-    totalEquipment: 156,
-    mostCommonType: 'Válvulas'
-  };
-
   useEffect(() => {
     fetchData();
   }, []);
@@ -129,16 +68,46 @@ const TiposEquipoView: React.FC = () => {
       setLoading(true);
       setError('');
       
-      // TODO: Cargar datos reales del backend
-      // const data = await tiposEquipoService.getAll();
-      // setTiposEquipo(data.results);
+      // Cargar datos reales del backend
+      const response = await tiposEquipoService.getAll();
+      const tipos = response.results || response || [];
       
-      // Usar datos mock por ahora
-      setTiposEquipo(mockTiposEquipo);
-      setStats(mockStats);
+      // Transformar datos del backend al formato del componente
+      const tiposTransformados = tipos.map((tipo: any) => ({
+        id: tipo.idtipoequipo,
+        name: tipo.nombretipo,
+        description: tipo.descripcion || 'Sin descripción',
+        equipmentCount: tipo.equipos_count || 0,
+        maintenanceFrequency: tipo.frecuencia_mantenimiento || 'No definida',
+        isActive: tipo.activo !== undefined ? tipo.activo : true,
+        createdAt: tipo.fecha_creacion || new Date().toISOString().split('T')[0],
+        lastUpdated: tipo.fecha_actualizacion || new Date().toISOString().split('T')[0]
+      }));
+      
+      setTiposEquipo(tiposTransformados);
+      
+      // Calcular estadísticas
+      const activeTipos = tiposTransformados.filter((t: any) => t.isActive).length;
+      const totalEquipment = tiposTransformados.reduce((sum: number, t: any) => sum + t.equipmentCount, 0);
+      const mostCommon = tiposTransformados.length > 0 
+        ? tiposTransformados.reduce((prev: any, current: any) => 
+            (prev.equipmentCount > current.equipmentCount) ? prev : current
+          ).name
+        : 'N/A';
+      
+      setStats({
+        totalTipos: tiposTransformados.length,
+        activeTipos,
+        totalEquipment,
+        mostCommonType: mostCommon
+      });
+      
+      console.log('✅ Tipos de equipo cargados:', tiposTransformados.length);
     } catch (err) {
-      console.error("Error fetching equipment types data:", err);
+      console.error("❌ Error fetching equipment types data:", err);
       setError("No se pudo cargar la información de tipos de equipo.");
+      setTiposEquipo([]);
+      setStats({ totalTipos: 0, activeTipos: 0, totalEquipment: 0, mostCommonType: 'N/A' });
     } finally {
       setLoading(false);
     }
@@ -195,11 +164,18 @@ const TiposEquipoView: React.FC = () => {
     setShowDeleteDialog(true);
   };
 
-  const confirmDelete = () => {
-    if (selectedTipo) {
-      console.log('Eliminar tipo de equipo:', selectedTipo.name);
+  const confirmDelete = async () => {
+    if (!selectedTipo) return;
+    
+    try {
+      await tiposEquipoService.delete(selectedTipo.id);
+      console.log('✅ Tipo de equipo eliminado:', selectedTipo.name);
       setShowDeleteDialog(false);
       setSelectedTipo(null);
+      await fetchData();
+    } catch (err) {
+      console.error('❌ Error eliminando tipo de equipo:', err);
+      setError('Error al eliminar el tipo de equipo');
     }
   };
 
@@ -380,11 +356,23 @@ const TiposEquipoView: React.FC = () => {
                 </div>
               ))}
               
-              {filteredTiposEquipo.length === 0 && (
+              {filteredTiposEquipo.length === 0 && tiposEquipo.length === 0 && (
+                <div className="text-center py-12 text-muted-foreground">
+                  <Wrench className="mx-auto h-16 w-16 text-muted-foreground/30 mb-4" />
+                  <h3 className="text-lg font-medium mb-2">No hay tipos de equipo registrados</h3>
+                  <p className="text-sm mb-4">Comienza creando el primer tipo de equipo para categorizar tus equipos.</p>
+                  <Button onClick={() => setShowCreateForm(true)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Crear Primer Tipo
+                  </Button>
+                </div>
+              )}
+              
+              {filteredTiposEquipo.length === 0 && tiposEquipo.length > 0 && (
                 <div className="text-center py-8 text-muted-foreground">
-                  <Wrench className="mx-auto h-12 w-12 text-muted-foreground/50" />
-                  <h3 className="mt-2 text-sm font-medium">No se encontraron tipos de equipo</h3>
-                  <p className="mt-1 text-sm">No hay tipos de equipo que coincidan con el término de búsqueda.</p>
+                  <Search className="mx-auto h-12 w-12 text-muted-foreground/50" />
+                  <h3 className="mt-2 text-sm font-medium">No se encontraron resultados</h3>
+                  <p className="mt-1 text-sm">No hay tipos de equipo que coincidan con "{searchTerm}".</p>
                 </div>
               )}
             </div>

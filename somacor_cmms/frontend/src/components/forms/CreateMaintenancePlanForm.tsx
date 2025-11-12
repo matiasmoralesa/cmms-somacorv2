@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { equiposServiceReal } from '@/services/apiServiceReal';
 import { planesMantenimientoService } from '@/services/planesMantenimientoService';
+import { ordenesTrabajoService } from '@/services/apiService';
 
 interface MaintenancePlan {
   id?: string;
@@ -125,24 +126,44 @@ const CreateMaintenancePlanForm: React.FC<CreateMaintenancePlanFormProps> = ({
         return;
       }
 
-      // Preparar datos para enviar al backend
-      const planData = {
-        nombre: formData.name,
-        equipo: parseInt(formData.equipment),
-        frecuencia: formData.frequency,
-        descripcion: formData.description,
-        duracion_estimada: formData.estimatedDuration,
-        activo: formData.active
+      // Obtener el usuario actual del localStorage
+      const authData = localStorage.getItem('authToken');
+      let userId = 1; // ID por defecto
+      
+      try {
+        if (authData) {
+          const userData = JSON.parse(atob(authData.split('.')[1]));
+          userId = userData.user_id || 1;
+        }
+      } catch (e) {
+        console.warn('No se pudo obtener el ID del usuario, usando ID por defecto');
+      }
+
+      // Generar número de OT único
+      const timestamp = Date.now();
+      const numeroOT = `OT-PREV-${timestamp}`;
+
+      // Preparar datos para crear una orden de trabajo de tipo preventivo
+      const ordenData = {
+        numeroot: numeroOT,
+        idequipo: parseInt(formData.equipment),
+        idsolicitante: userId, // Usuario que crea la orden
+        idtipomantenimientoot: 1, // 1 = Preventivo (ajustar según tu BD)
+        idestadoot: 1, // 1 = Pendiente (ajustar según tu BD)
+        descripcionproblemareportado: formData.name,
+        prioridad: 'Media',
+        observacionesfinales: `${formData.description}\n\nFrecuencia: ${formData.frequency}\nDuración estimada: ${formData.estimatedDuration}`,
+        fechareportefalla: new Date().toISOString()
       };
 
-      console.log('Guardar plan de mantenimiento:', planData);
+      console.log('Crear orden de trabajo preventiva:', ordenData);
       
       if (isEditMode && maintenancePlanData?.id) {
-        // Actualizar plan existente
-        await planesMantenimientoService.update(parseInt(maintenancePlanData.id), planData);
+        // Actualizar orden existente
+        await ordenesTrabajoService.update(parseInt(maintenancePlanData.id), ordenData);
       } else {
-        // Crear nuevo plan
-        await planesMantenimientoService.create(planData);
+        // Crear nueva orden de trabajo
+        await ordenesTrabajoService.create(ordenData);
       }
       
       // Mostrar mensaje de éxito

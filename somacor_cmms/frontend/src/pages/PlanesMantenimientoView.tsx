@@ -19,6 +19,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import CreateMaintenancePlanForm from '@/components/forms/CreateMaintenancePlanForm';
 import { planesMantenimientoService } from '@/services/planesMantenimientoService';
+import { ordenesTrabajoService, equiposService } from '@/services/apiService';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 interface MaintenancePlan {
@@ -47,92 +48,16 @@ const PlanesMantenimientoView: React.FC = () => {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingPlan, setEditingPlan] = useState<MaintenancePlan | undefined>(undefined);
   const [deleteConfirm, setDeleteConfirm] = useState<{isOpen: boolean, plan: MaintenancePlan | null}>({isOpen: false, plan: null});
-
-  // Datos de ejemplo para el diseño
-  const mockStats = {
-    planesActivos: 4,
+  
+  // Estados para datos reales
+  const [stats, setStats] = useState({
+    planesActivos: 0,
     estaSemana: 0,
-    vencidos: 4,
-    horasTotales: 11
-  };
-
-  const mockUpcomingMaintenance: UpcomingMaintenance[] = [
-    {
-      id: "1",
-      title: "Mantenimiento Mensual Bomba",
-      equipment: "Bomba Centrífuga B-205",
-      date: "31-10-2024",
-      assignedTo: "María García",
-      estimatedTime: "2h estimadas",
-      tasks: 5,
-      status: "overdue"
-    },
-    {
-      id: "2",
-      title: "Mantenimiento Trimestral Compresor",
-      equipment: "Compresor de Aire Principal",
-      date: "14-12-2024",
-      assignedTo: "Juan Pérez",
-      estimatedTime: "3h estimadas",
-      tasks: 8,
-      status: "upcoming"
-    },
-    {
-      id: "3",
-      title: "Mantenimiento Semestral Motor",
-      equipment: "Motor Eléctrico C-310",
-      date: "19-02-2025",
-      assignedTo: "Carlos López",
-      estimatedTime: "4h estimadas",
-      tasks: 12,
-      status: "upcoming"
-    },
-    {
-      id: "4",
-      title: "Mantenimiento Anual Válvula",
-      equipment: "Válvula de Control D-115",
-      date: "09-09-2025",
-      assignedTo: "Ana Martínez",
-      estimatedTime: "2h estimadas",
-      tasks: 6,
-      status: "upcoming"
-    }
-  ];
-
-  const mockMaintenancePlans: MaintenancePlan[] = [
-    {
-      id: "1",
-      name: "Mantenimiento Trimestral Compresor",
-      equipment: "Compresor de Aire Principal",
-      frequency: "Trimestral",
-      nextDate: "14-12-2024",
-      active: true
-    },
-    {
-      id: "2",
-      name: "Mantenimiento Mensual Bomba",
-      equipment: "Bomba Centrífuga B-205",
-      frequency: "Mensual",
-      nextDate: "31-10-2024",
-      active: true
-    },
-    {
-      id: "3",
-      name: "Mantenimiento Semestral Motor",
-      equipment: "Motor Eléctrico C-310",
-      frequency: "Semestral",
-      nextDate: "19-02-2025",
-      active: true
-    },
-    {
-      id: "4",
-      name: "Mantenimiento Anual Válvula",
-      equipment: "Válvula de Control D-115",
-      frequency: "Anual",
-      nextDate: "09-09-2025",
-      active: true
-    }
-  ];
+    vencidos: 0,
+    horasTotales: 0
+  });
+  const [upcomingMaintenance, setUpcomingMaintenance] = useState<UpcomingMaintenance[]>([]);
+  const [maintenancePlans, setMaintenancePlans] = useState<MaintenancePlan[]>([]);
 
   useEffect(() => {
     fetchData();
@@ -143,13 +68,78 @@ const PlanesMantenimientoView: React.FC = () => {
       setLoading(true);
       setError('');
       
-      // TODO: Cargar datos reales del backend
-      // const data = await planesMantenimientoService.getAll();
-      // setPlanes(data.results);
+      // Cargar órdenes de trabajo de tipo preventivo
+      const ordenesResponse = await ordenesTrabajoService.getAll({ limit: 100 });
+      const ordenes = ordenesResponse.results || [];
       
-      console.log('Datos cargados correctamente');
+      // Filtrar órdenes preventivas
+      const ordenesPreventivas = ordenes.filter((orden: any) => 
+        orden.tipo_mantenimiento_nombre?.toLowerCase().includes('preventivo')
+      );
+      
+      // Calcular estadísticas
+      const ahora = new Date();
+      const estaSemana = new Date(ahora.getTime() + 7 * 24 * 60 * 60 * 1000);
+      
+      const ordenesEstaSemana = ordenesPreventivas.filter((orden: any) => {
+        if (!orden.fechaejecucion) return false;
+        const fechaEjecucion = new Date(orden.fechaejecucion);
+        return fechaEjecucion >= ahora && fechaEjecucion <= estaSemana;
+      });
+      
+      const ordenesVencidas = ordenesPreventivas.filter((orden: any) => {
+        if (!orden.fechaejecucion) return false;
+        const fechaEjecucion = new Date(orden.fechaejecucion);
+        return fechaEjecucion < ahora && orden.estado_nombre !== 'Completada';
+      });
+      
+      const horasTotales = ordenesPreventivas.reduce((total: number, orden: any) => {
+        return total + (orden.tiempototalminutos || 0);
+      }, 0) / 60;
+      
+      setStats({
+        planesActivos: ordenesPreventivas.length,
+        estaSemana: ordenesEstaSemana.length,
+        vencidos: ordenesVencidas.length,
+        horasTotales: Math.round(horasTotales)
+      });
+      
+      // Transformar órdenes a próximos mantenimientos
+      const proximosMantenimientos: UpcomingMaintenance[] = ordenesPreventivas
+        .slice(0, 10)
+        .map((orden: any) => {
+          const fechaEjecucion = orden.fechaejecucion ? new Date(orden.fechaejecucion) : new Date();
+          const isOverdue = fechaEjecucion < ahora && orden.estado_nombre !== 'Completada';
+          
+          return {
+            id: orden.idordentrabajo?.toString() || '',
+            title: orden.descripcionproblemareportado || 'Mantenimiento Preventivo',
+            equipment: orden.equipo_nombre || 'Sin equipo',
+            date: fechaEjecucion.toLocaleDateString('es-CL'),
+            assignedTo: orden.tecnico_nombre || 'Sin asignar',
+            estimatedTime: `${Math.round((orden.tiempototalminutos || 120) / 60)}h estimadas`,
+            tasks: 5,
+            status: isOverdue ? 'overdue' as const : 'upcoming' as const
+          };
+        });
+      
+      setUpcomingMaintenance(proximosMantenimientos);
+      
+      // Transformar órdenes a planes
+      const planes: MaintenancePlan[] = ordenesPreventivas.map((orden: any) => ({
+        id: orden.idordentrabajo?.toString() || '',
+        name: orden.descripcionproblemareportado || 'Mantenimiento Preventivo',
+        equipment: orden.equipo_nombre || 'Sin equipo',
+        frequency: 'Mensual',
+        nextDate: orden.fechaejecucion ? new Date(orden.fechaejecucion).toLocaleDateString('es-CL') : 'Sin fecha',
+        active: orden.estado_nombre !== 'Cancelada'
+      }));
+      
+      setMaintenancePlans(planes);
+      
+      console.log('✅ Datos cargados');
     } catch (err) {
-      console.error("Error fetching maintenance data:", err);
+      console.error("❌ Error:", err);
       setError("No se pudo cargar la información de mantenimiento preventivo.");
     } finally {
       setLoading(false);
@@ -169,22 +159,20 @@ const PlanesMantenimientoView: React.FC = () => {
     if (!deleteConfirm.plan || !deleteConfirm.plan.id) return;
     
     try {
-      console.log('Eliminando plan:', deleteConfirm.plan.id);
+      console.log('🗑️ Eliminando orden de trabajo:', deleteConfirm.plan.id);
       
-      // TODO: Implementar eliminación en el backend
-      // await planesMantenimientoService.delete(parseInt(deleteConfirm.plan.id));
+      // Eliminar la orden de trabajo (que representa el plan de mantenimiento)
+      await ordenesTrabajoService.delete(parseInt(deleteConfirm.plan.id));
       
-      // Simular eliminación
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      alert('Plan de mantenimiento eliminado exitosamente');
+      console.log('✅ Orden eliminada exitosamente');
       setDeleteConfirm({isOpen: false, plan: null});
       
       // Recargar datos
-      fetchData();
-    } catch (err) {
-      console.error('Error eliminando plan:', err);
-      alert('Error al eliminar el plan de mantenimiento');
+      await fetchData();
+    } catch (err: any) {
+      console.error('❌ Error eliminando plan:', err);
+      setError(err.response?.data?.message || 'Error al eliminar el plan de mantenimiento');
+      setDeleteConfirm({isOpen: false, plan: null});
     }
   };
 
@@ -196,18 +184,23 @@ const PlanesMantenimientoView: React.FC = () => {
     if (!plan.id) return;
     
     try {
-      console.log('Toggle activo para plan:', plan.id, 'Nuevo estado:', !plan.active);
+      console.log('🔄 Toggle activo para orden:', plan.id, 'Nuevo estado:', !plan.active);
       
-      // TODO: Implementar toggle en el backend
-      // await planesMantenimientoService.toggleActivo(parseInt(plan.id), !plan.active);
+      // Cambiar el estado de la orden de trabajo
+      // Si está activa, la cancelamos; si está cancelada, la reactivamos
+      const nuevoEstado = plan.active ? 'Cancelada' : 'Pendiente';
       
-      alert(`Plan ${!plan.active ? 'activado' : 'desactivado'} exitosamente`);
+      await ordenesTrabajoService.update(parseInt(plan.id), {
+        idestadoot: plan.active ? 4 : 1 // 4 = Cancelada, 1 = Pendiente (ajustar según tu BD)
+      });
+      
+      console.log(`✅ Plan ${!plan.active ? 'activado' : 'desactivado'} exitosamente`);
       
       // Recargar datos
-      fetchData();
-    } catch (err) {
-      console.error('Error toggling plan:', err);
-      alert('Error al cambiar el estado del plan');
+      await fetchData();
+    } catch (err: any) {
+      console.error('❌ Error toggling plan:', err);
+      setError(err.response?.data?.message || 'Error al cambiar el estado del plan');
     }
   };
 
@@ -233,15 +226,7 @@ const PlanesMantenimientoView: React.FC = () => {
     );
   }
 
-  if (error) {
-    return (
-      <PageLayout>
-        <div className="p-8 text-center text-destructive bg-destructive/10 rounded-lg">
-          {error}
-        </div>
-      </PageLayout>
-    );
-  }
+  const clearError = () => setError('');
 
   return (
     <PageLayout>
@@ -255,6 +240,19 @@ const PlanesMantenimientoView: React.FC = () => {
         </Button>
       </PageHeader>
 
+      {/* Mensaje de error */}
+      {error && (
+        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-red-600" />
+            <p className="text-red-800">{error}</p>
+          </div>
+          <Button variant="ghost" size="sm" onClick={clearError}>
+            ✕
+          </Button>
+        </div>
+      )}
+
       {/* Tarjetas de resumen */}
       <StatsGrid>
         <Card>
@@ -263,9 +261,9 @@ const PlanesMantenimientoView: React.FC = () => {
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{mockStats.planesActivos}</div>
+            <div className="text-2xl font-bold">{stats.planesActivos}</div>
             <p className="text-xs text-muted-foreground">
-              De {mockStats.planesActivos} totales
+              De {stats.planesActivos} totales
             </p>
           </CardContent>
         </Card>
@@ -276,7 +274,7 @@ const PlanesMantenimientoView: React.FC = () => {
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{mockStats.estaSemana}</div>
+            <div className="text-2xl font-bold">{stats.estaSemana}</div>
             <p className="text-xs text-muted-foreground">
               Mantenimientos programados
             </p>
@@ -289,7 +287,7 @@ const PlanesMantenimientoView: React.FC = () => {
             <AlertTriangle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-destructive">{mockStats.vencidos}</div>
+            <div className="text-2xl font-bold text-destructive">{stats.vencidos}</div>
             <p className="text-xs text-muted-foreground">
               Requieren atención
             </p>
@@ -302,7 +300,7 @@ const PlanesMantenimientoView: React.FC = () => {
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{mockStats.horasTotales}h</div>
+            <div className="text-2xl font-bold">{stats.horasTotales}h</div>
             <p className="text-xs text-muted-foreground">
               Estimadas por ciclo
             </p>
@@ -318,7 +316,7 @@ const PlanesMantenimientoView: React.FC = () => {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {mockUpcomingMaintenance.map((maintenance) => (
+            {upcomingMaintenance.map((maintenance) => (
               <div key={maintenance.id} className="flex items-center justify-between p-4 border rounded-lg">
                 <div className="flex-1">
                   <div className="flex items-center justify-between mb-2">
@@ -369,7 +367,7 @@ const PlanesMantenimientoView: React.FC = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {mockMaintenancePlans.map((plan) => (
+              {maintenancePlans.map((plan) => (
                 <TableRow key={plan.id}>
                   <TableCell>
                     <div>

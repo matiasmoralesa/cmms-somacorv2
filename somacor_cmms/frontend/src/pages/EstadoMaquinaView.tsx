@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import axios from 'axios';
 import { 
   Server, 
   Zap, 
@@ -22,26 +21,10 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import CreateEquipmentForm from '@/components/forms/CreateEquipmentForm';
+import EquipmentDetailPanel from '@/components/equipment/EquipmentDetailPanel';
+import { equiposService } from '@/services/apiService';
 
-// =================================================================================
-// CONFIGURACIÓN DE API
-// =================================================================================
-
-const API_URL = 'http://localhost:8000/api';
-const apiClient = axios.create({
-  baseURL: API_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-apiClient.interceptors.request.use(config => {
-  const token = localStorage.getItem('authToken');
-  if (token) {
-    config.headers.Authorization = `Token ${token}`;
-  }
-  return config;
-}, error => Promise.reject(error));
+// Nota: Usando el servicio centralizado equiposService en lugar de crear un cliente axios local
 
 // =================================================================================
 // TIPOS DE DATOS
@@ -78,83 +61,52 @@ const EstadoMaquinaView: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [categoriaFilter, setCategoriaFilter] = useState('all');
   const [estadoFilter, setEstadoFilter] = useState('all');
+  const [marcaFilter, setMarcaFilter] = useState('all');
+  const [faenaFilter, setFaenaFilter] = useState('all');
   const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: 'asc' | 'desc' } | null>(null);
   const [selectedEquipo, setSelectedEquipo] = useState<Equipo | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
-
-  // Datos de ejemplo para el diseño
-  const mockEquipos: Equipo[] = [
-    {
-      id: 1,
-      codigo: "EQ-001",
-      nombre: "Compresor de Aire Principal",
-      marca: "Atlas Copco",
-      modelo: "GA 37",
-      patente: "ABC-123",
-      ubicacion: "Planta Norte",
-      estado: "Operativo",
-      categoria: "Compresores",
-      ultimoMantenimiento: "15-09-2024",
-      activo: true
-    },
-    {
-      id: 2,
-      codigo: "EQ-002",
-      nombre: "Bomba Centrífuga B-205",
-      marca: "Grundfos",
-      modelo: "CR 32-4",
-      patente: "DEF-456",
-      ubicacion: "Planta Sur",
-      estado: "En Mantenimiento",
-      categoria: "Bombas",
-      ultimoMantenimiento: "20-09-2024",
-      activo: true
-    },
-    {
-      id: 3,
-      codigo: "EQ-003",
-      nombre: "Motor Eléctrico C-310",
-      marca: "Siemens",
-      modelo: "1LA7 090-4",
-      patente: "GHI-789",
-      ubicacion: "Planta Central",
-      estado: "Fuera de Servicio",
-      categoria: "Motores",
-      ultimoMantenimiento: "10-08-2024",
-      activo: true
-    },
-    {
-      id: 4,
-      codigo: "EQ-004",
-      nombre: "Válvula de Control D-115",
-      marca: "Fisher",
-      modelo: "V150",
-      patente: "JKL-012",
-      ubicacion: "Planta Este",
-      estado: "Operativo",
-      categoria: "Válvulas",
-      ultimoMantenimiento: "25-09-2024",
-      activo: true
-    }
-  ];
-
-  const mockStats: EquipmentStats = {
-    total: 156,
-    operativos: 142,
-    enMantenimiento: 8,
-    fueraServicio: 6
-  };
+  const [showDetailPanel, setShowDetailPanel] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        // Usar datos mock por ahora
-        setEquipos(mockEquipos);
-        setStats(mockStats);
         setError('');
+        
+        // Cargar equipos desde el backend
+        const response = await equiposService.getAll();
+        const equiposData = response.results || response.data || response;
+        
+        // Mapear datos del backend al formato del componente
+        const mappedEquipos: Equipo[] = equiposData.map((eq: any) => ({
+          id: eq.idequipo,
+          codigo: eq.codigointerno || `EQ-${eq.idequipo}`,
+          nombre: eq.nombreequipo,
+          marca: eq.marca || 'N/A',
+          modelo: eq.modelo || 'N/A',
+          patente: eq.patente || 'N/A',
+          ubicacion: eq.faena_nombre || eq.idfaenaactual?.nombrefaena || eq.ubicacion || 'Sin ubicación',
+          estado: eq.estado_nombre || eq.idestadoactual?.nombreestado || 'Desconocido',
+          categoria: eq.tipo_equipo_nombre || eq.idtipoequipo?.nombretipo || 'Sin categoría',
+          ultimoMantenimiento: eq.ultima_mantenimiento || eq.fechaultimoMantenimiento || 'N/A',
+          activo: eq.activo !== false
+        }));
+        
+        setEquipos(mappedEquipos);
+        
+        // Calcular estadísticas
+        const stats: EquipmentStats = {
+          total: mappedEquipos.length,
+          operativos: mappedEquipos.filter(e => e.estado === 'Operativo').length,
+          enMantenimiento: mappedEquipos.filter(e => e.estado.includes('Mantenimiento')).length,
+          fueraServicio: mappedEquipos.filter(e => e.estado === 'Fuera de Servicio').length
+        };
+        
+        setStats(stats);
+        
       } catch (err) {
         console.error("Error fetching equipment data:", err);
         setError("No se pudo cargar la información de los equipos.");
@@ -174,7 +126,9 @@ const EstadoMaquinaView: React.FC = () => {
       filtered = filtered.filter(equipo =>
         equipo.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
         equipo.codigo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        equipo.patente.toLowerCase().includes(searchTerm.toLowerCase())
+        equipo.patente.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        equipo.marca.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        equipo.modelo.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
@@ -186,6 +140,16 @@ const EstadoMaquinaView: React.FC = () => {
     // Filtrar por estado
     if (estadoFilter !== 'all') {
       filtered = filtered.filter(equipo => equipo.estado === estadoFilter);
+    }
+
+    // Filtrar por marca
+    if (marcaFilter !== 'all') {
+      filtered = filtered.filter(equipo => equipo.marca === marcaFilter);
+    }
+
+    // Filtrar por faena
+    if (faenaFilter !== 'all') {
+      filtered = filtered.filter(equipo => equipo.ubicacion === faenaFilter);
     }
 
     // Ordenar
@@ -200,7 +164,7 @@ const EstadoMaquinaView: React.FC = () => {
     }
 
     return filtered;
-  }, [equipos, searchTerm, categoriaFilter, estadoFilter, sortConfig]);
+  }, [equipos, searchTerm, categoriaFilter, estadoFilter, marcaFilter, faenaFilter, sortConfig]);
 
   const requestSort = (key: SortKey) => {
     let direction: 'asc' | 'desc' = 'asc';
@@ -235,7 +199,7 @@ const EstadoMaquinaView: React.FC = () => {
   // Handlers para acciones
   const handleViewDetails = (equipo: Equipo) => {
     setSelectedEquipo(equipo);
-    console.log('Ver detalles de:', equipo.nombre);
+    setShowDetailPanel(true);
   };
 
   const handleEdit = (equipo: Equipo) => {
@@ -347,12 +311,31 @@ const EstadoMaquinaView: React.FC = () => {
       <ContentGrid>
         <Card>
           <CardHeader>
-            <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center">
-              <div>
-                <CardTitle>Lista de Equipos</CardTitle>
-                <CardDescription>
-                  Estado actual de todos los equipos industriales
-                </CardDescription>
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center">
+                <div>
+                  <CardTitle>Lista de Equipos</CardTitle>
+                  <CardDescription>
+                    Mostrando {filteredEquipos.length} de {equipos.length} equipos
+                  </CardDescription>
+                </div>
+                
+                {(searchTerm || categoriaFilter !== 'all' || marcaFilter !== 'all' || faenaFilter !== 'all' || estadoFilter !== 'all') && (
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      setSearchTerm('');
+                      setCategoriaFilter('all');
+                      setMarcaFilter('all');
+                      setFaenaFilter('all');
+                      setEstadoFilter('all');
+                    }}
+                  >
+                    <Filter className="h-4 w-4 mr-2" />
+                    Limpiar Filtros
+                  </Button>
+                )}
               </div>
               
               <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
@@ -367,20 +350,55 @@ const EstadoMaquinaView: React.FC = () => {
                 </div>
                 
                 <Select value={categoriaFilter} onValueChange={setCategoriaFilter}>
-                  <SelectTrigger className="w-full md:w-48">
-                    <SelectValue placeholder="Categoría" />
+                  <SelectTrigger className="w-full md:w-40">
+                    <SelectValue placeholder="Tipo" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Todas las categorías</SelectItem>
-                    <SelectItem value="Compresores">Compresores</SelectItem>
-                    <SelectItem value="Bombas">Bombas</SelectItem>
-                    <SelectItem value="Motores">Motores</SelectItem>
-                    <SelectItem value="Válvulas">Válvulas</SelectItem>
+                    <SelectItem value="all">Todos los tipos</SelectItem>
+                    <SelectItem value="Camionetas">Camionetas</SelectItem>
+                    <SelectItem value="Retroexcavadora">Retroexcavadora</SelectItem>
+                    <SelectItem value="Cargador Frontal">Cargador Frontal</SelectItem>
+                    <SelectItem value="Minicargador">Minicargador</SelectItem>
+                    <SelectItem value="Camion Supersucker">Camión Supersucker</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Select value={marcaFilter} onValueChange={setMarcaFilter}>
+                  <SelectTrigger className="w-full md:w-40">
+                    <SelectValue placeholder="Marca" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas las marcas</SelectItem>
+                    <SelectItem value="Toyota">Toyota</SelectItem>
+                    <SelectItem value="Caterpillar">Caterpillar</SelectItem>
+                    <SelectItem value="Komatsu">Komatsu</SelectItem>
+                    <SelectItem value="Case">Case</SelectItem>
+                    <SelectItem value="John Deere">John Deere</SelectItem>
+                    <SelectItem value="JCB">JCB</SelectItem>
+                    <SelectItem value="Nissan">Nissan</SelectItem>
+                    <SelectItem value="Mitsubishi">Mitsubishi</SelectItem>
+                    <SelectItem value="Chevrolet">Chevrolet</SelectItem>
+                    <SelectItem value="Bobcat">Bobcat</SelectItem>
+                    <SelectItem value="Gehl">Gehl</SelectItem>
+                    <SelectItem value="Kenworth">Kenworth</SelectItem>
+                    <SelectItem value="Peterbilt">Peterbilt</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Select value={faenaFilter} onValueChange={setFaenaFilter}>
+                  <SelectTrigger className="w-full md:w-48">
+                    <SelectValue placeholder="Faena" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas las faenas</SelectItem>
+                    <SelectItem value="Faena Central Santiago">Faena Central Santiago</SelectItem>
+                    <SelectItem value="Faena Norte Antofagasta">Faena Norte Antofagasta</SelectItem>
+                    <SelectItem value="Faena Sur Concepcion">Faena Sur Concepción</SelectItem>
                   </SelectContent>
                 </Select>
 
                 <Select value={estadoFilter} onValueChange={setEstadoFilter}>
-                  <SelectTrigger className="w-full md:w-48">
+                  <SelectTrigger className="w-full md:w-40">
                     <SelectValue placeholder="Estado" />
                   </SelectTrigger>
                   <SelectContent>
@@ -411,7 +429,31 @@ const EstadoMaquinaView: React.FC = () => {
                       onClick={() => requestSort('nombre')}
                     >
                       <div className="flex items-center gap-2">
-                        Nombre {getSortIcon('nombre')}
+                        Equipo {getSortIcon('nombre')}
+                      </div>
+                    </th>
+                    <th 
+                      className="text-left p-4 font-medium cursor-pointer hover:bg-muted/50"
+                      onClick={() => requestSort('marca')}
+                    >
+                      <div className="flex items-center gap-2">
+                        Marca {getSortIcon('marca')}
+                      </div>
+                    </th>
+                    <th 
+                      className="text-left p-4 font-medium cursor-pointer hover:bg-muted/50"
+                      onClick={() => requestSort('modelo')}
+                    >
+                      <div className="flex items-center gap-2">
+                        Modelo {getSortIcon('modelo')}
+                      </div>
+                    </th>
+                    <th 
+                      className="text-left p-4 font-medium cursor-pointer hover:bg-muted/50"
+                      onClick={() => requestSort('patente')}
+                    >
+                      <div className="flex items-center gap-2">
+                        Patente {getSortIcon('patente')}
                       </div>
                     </th>
                     <th 
@@ -419,7 +461,7 @@ const EstadoMaquinaView: React.FC = () => {
                       onClick={() => requestSort('categoria')}
                     >
                       <div className="flex items-center gap-2">
-                        Categoría {getSortIcon('categoria')}
+                        Tipo {getSortIcon('categoria')}
                       </div>
                     </th>
                     <th 
@@ -427,7 +469,7 @@ const EstadoMaquinaView: React.FC = () => {
                       onClick={() => requestSort('ubicacion')}
                     >
                       <div className="flex items-center gap-2">
-                        Ubicación {getSortIcon('ubicacion')}
+                        Faena {getSortIcon('ubicacion')}
                       </div>
                     </th>
                     <th 
@@ -438,28 +480,40 @@ const EstadoMaquinaView: React.FC = () => {
                         Estado {getSortIcon('estado')}
                       </div>
                     </th>
-                    <th className="text-left p-4 font-medium">Último Mantenimiento</th>
                     <th className="text-center p-4 font-medium">Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredEquipos.map((equipo) => (
                     <tr key={equipo.id} className="border-b hover:bg-muted/50">
-                      <td className="p-4 font-medium">{equipo.codigo}</td>
                       <td className="p-4">
-                        <div>
-                          <div className="font-medium">{equipo.nombre}</div>
-                          <div className="text-sm text-muted-foreground">
-                            {equipo.marca} {equipo.modelo}
-                          </div>
+                        <div className="font-mono text-sm font-bold text-primary">
+                          {equipo.codigo}
                         </div>
                       </td>
-                      <td className="p-4">{equipo.categoria}</td>
-                      <td className="p-4">{equipo.ubicacion}</td>
-                      <td className="p-4">{getStatusBadge(equipo.estado)}</td>
-                      <td className="p-4 text-sm text-muted-foreground">
-                        {equipo.ultimoMantenimiento}
+                      <td className="p-4">
+                        <div className="font-medium">{equipo.nombre}</div>
                       </td>
+                      <td className="p-4">
+                        <div className="text-sm">{equipo.marca}</div>
+                      </td>
+                      <td className="p-4">
+                        <div className="text-sm">{equipo.modelo}</div>
+                      </td>
+                      <td className="p-4">
+                        <div className="font-mono text-sm font-semibold">
+                          {equipo.patente}
+                        </div>
+                      </td>
+                      <td className="p-4">
+                        <Badge variant="outline" className="text-xs">
+                          {equipo.categoria}
+                        </Badge>
+                      </td>
+                      <td className="p-4">
+                        <div className="text-sm">{equipo.ubicacion}</div>
+                      </td>
+                      <td className="p-4">{getStatusBadge(equipo.estado)}</td>
                       <td className="p-4">
                         <div className="flex justify-center gap-2">
                           <Button 
@@ -538,6 +592,17 @@ const EstadoMaquinaView: React.FC = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Panel de detalles del equipo */}
+      {showDetailPanel && selectedEquipo && (
+        <EquipmentDetailPanel
+          equipo={selectedEquipo}
+          onClose={() => {
+            setShowDetailPanel(false);
+            setSelectedEquipo(null);
+          }}
+        />
+      )}
     </PageLayout>
   );
 };
