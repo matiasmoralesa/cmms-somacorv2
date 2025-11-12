@@ -107,15 +107,34 @@ const InventarioView: React.FC = () => {
       setLoading(true);
       setError('');
       
-      // TODO: Cargar datos reales del backend
-      // const data = await inventarioService.getAll();
-      // setInventoryItems(data.results);
-      
-      // Usar datos mock por ahora
-      setInventoryItems(mockInventoryItems);
+      // Cargar datos reales del backend (endpoint placeholder)
+      try {
+        const response = await fetch('http://localhost:8000/api/v2/inventario/');
+        const data = await response.json();
+        const items = data.results || data || [];
+        
+        const itemsTransformados = items.map((item: any) => ({
+          id: item.id?.toString(),
+          code: item.codigo || 'SIN-COD',
+          name: item.nombre || 'Sin nombre',
+          category: item.categoria || 'General',
+          quantity: item.cantidad || 0,
+          minStock: item.stock_minimo || 10,
+          status: item.cantidad <= item.stock_minimo ? 'low' : 'normal',
+          location: item.ubicacion || 'Sin ubicación',
+          unitCost: item.costo_unitario || 0
+        }));
+        
+        setInventoryItems(itemsTransformados);
+        console.log('✅ Inventario cargado:', itemsTransformados.length);
+      } catch (apiErr) {
+        console.warn('⚠️ API de inventario no disponible, mostrando estado vacío');
+        setInventoryItems([]);
+      }
     } catch (err) {
-      console.error("Error fetching inventory:", err);
+      console.error("❌ Error fetching inventory:", err);
       setError("No se pudo cargar el inventario.");
+      setInventoryItems([]);
     } finally {
       setLoading(false);
     }

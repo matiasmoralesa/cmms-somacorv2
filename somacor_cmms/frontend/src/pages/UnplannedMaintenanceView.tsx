@@ -132,22 +132,62 @@ const UnplannedMaintenanceView: React.FC = () => {
   };
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        // Usar datos mock por ahora
-        setMaintenances(mockMaintenances);
-        setStats(mockStats);
-        setError('');
-      } catch (err) {
-        console.error("Error fetching maintenance data:", err);
-        setError("No se pudo cargar la información de mantenimientos.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      
+      // Cargar órdenes de trabajo correctivas/no planificadas
+      const response = await fetch('http://localhost:8000/api/v2/ordenes-trabajo/');
+      const data = await response.json();
+      const ordenes = data.results || data || [];
+      
+      // Filtrar órdenes correctivas o de emergencia
+      const ordenesNoPlanificadas = ordenes.filter((orden: any) => 
+        orden.tipo_mantenimiento_nombre?.toLowerCase().includes('correctivo') ||
+        orden.tipo_mantenimiento_nombre?.toLowerCase().includes('emergencia')
+      );
+      
+      const mantenimientosTransformados = ordenesNoPlanificadas.map((orden: any) => ({
+        id: orden.idordentrabajo?.toString(),
+        title: orden.descripcionproblemareportado || 'Reporte de falla',
+        equipment: orden.equipo_nombre || 'Sin equipo',
+        equipmentCode: orden.equipo_codigo || 'N/A',
+        reportedBy: orden.solicitante_nombre || 'Sin reportar',
+        reportedDate: orden.fechareportefalla?.split('T')[0] || new Date().toISOString().split('T')[0],
+        priority: orden.prioridad?.toLowerCase() || 'media',
+        status: orden.estado_nombre === 'Completada' ? 'completado' : 
+                orden.estado_nombre === 'En Proceso' ? 'en_progreso' : 'reportado',
+        description: orden.observacionesfinales || orden.descripcionproblemareportado || '',
+        location: orden.faena_nombre || 'Sin ubicación',
+        estimatedTime: '2 horas',
+        assignedTo: orden.tecnico_nombre,
+        images: []
+      }));
+      
+      setMaintenances(mantenimientosTransformados);
+      
+      setStats({
+        totalReportes: mantenimientosTransformados.length,
+        pendientes: mantenimientosTransformados.filter((m: any) => m.status === 'reportado').length,
+        enProgreso: mantenimientosTransformados.filter((m: any) => m.status === 'en_progreso').length,
+        completados: mantenimientosTransformados.filter((m: any) => m.status === 'completado').length,
+        urgentes: mantenimientosTransformados.filter((m: any) => m.priority === 'urgente' || m.priority === 'crítica').length
+      });
+      
+      console.log('✅ Mantenimientos no planificados cargados:', mantenimientosTransformados.length);
+    } catch (err) {
+      console.error("❌ Error fetching maintenance data:", err);
+      setError("No se pudo cargar la información de mantenimientos.");
+      setMaintenances([]);
+      setStats({ totalReportes: 0, pendientes: 0, enProgreso: 0, completados: 0, urgentes: 0 });
+    } finally {
+      setLoading(false);
+    }
+  };
   }, []);
 
   // Filtrar mantenimientos

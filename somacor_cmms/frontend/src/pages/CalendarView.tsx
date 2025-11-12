@@ -131,10 +131,49 @@ const CalendarView: React.FC = () => {
   };
 
   useEffect(() => {
-    // Simular carga de datos
-    setEvents(mockEvents);
-    setStats(mockStats);
+    fetchCalendarData();
   }, []);
+
+  const fetchCalendarData = async () => {
+    try {
+      // Cargar agendas desde el backend
+      const response = await fetch('http://localhost:8000/api/v2/agendas/');
+      const data = await response.json();
+      const agendas = data.results || data || [];
+      
+      const eventosTransformados = agendas.map((agenda: any) => ({
+        id: agenda.idagenda?.toString(),
+        title: agenda.descripcion || 'Evento',
+        date: agenda.fechaprogramada || new Date().toISOString().split('T')[0],
+        time: agenda.horaprogramada || '00:00',
+        type: 'preventivo',
+        equipment: agenda.equipo_nombre || 'Sin equipo',
+        technician: agenda.tecnico_nombre || 'Sin asignar',
+        status: agenda.completado ? 'completado' : 'programado',
+        priority: 'media',
+        description: agenda.observaciones || ''
+      }));
+      
+      setEvents(eventosTransformados);
+      setStats({
+        totalEventos: eventosTransformados.length,
+        estaSemana: eventosTransformados.filter((e: any) => {
+          const eventDate = new Date(e.date);
+          const today = new Date();
+          const weekFromNow = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+          return eventDate >= today && eventDate <= weekFromNow;
+        }).length,
+        vencidos: 0,
+        completados: eventosTransformados.filter((e: any) => e.status === 'completado').length
+      });
+      
+      console.log('✅ Calendario cargado:', eventosTransformados.length);
+    } catch (err) {
+      console.warn('⚠️ API de calendario no disponible, mostrando vacío');
+      setEvents([]);
+      setStats({ totalEventos: 0, estaSemana: 0, vencidos: 0, completados: 0 });
+    }
+  };
 
   // Obtener eventos del mes actual
   const getCurrentMonthEvents = () => {

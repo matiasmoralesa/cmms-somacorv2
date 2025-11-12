@@ -90,14 +90,25 @@ const TecnicosView: React.FC = () => {
       setLoading(true);
       setError('');
       
-      // TODO: Cargar datos reales del backend
-      // const data = await tecnicosService.getAll();
-      // setTechnicians(data.results);
+      const response = await tecnicosService.getAll();
+      const tecnicos = response.results || response || [];
       
-      // Usar datos mock por ahora
-      setTechnicians(mockTechnicians);
+      const tecnicosTransformados = tecnicos.map((tec: any) => ({
+        id: tec.user?.id?.toString() || tec.id?.toString(),
+        name: tec.user?.get_full_name || tec.user?.username || tec.nombre || 'Sin nombre',
+        email: tec.user?.email || tec.email || 'Sin email',
+        phone: tec.telefono || tec.phone || 'Sin teléfono',
+        status: tec.disponible ? 'available' : 'busy',
+        activeOrders: tec.ordenes_activas || 0,
+        specialties: tec.especialidades || [],
+        avatar: (tec.user?.first_name?.[0] || '') + (tec.user?.last_name?.[0] || '') || 'T'
+      }));
+      
+      setTechnicians(tecnicosTransformados);
+      console.log('✅ Técnicos cargados:', tecnicosTransformados.length);
     } catch (err) {
-      console.error("Error fetching technicians:", err);
+      console.error("❌ Error fetching technicians:", err);
+      setTechnicians([]);
       setError("No se pudo cargar la información de técnicos.");
     } finally {
       setLoading(false);

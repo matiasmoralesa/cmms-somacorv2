@@ -141,13 +141,56 @@ const ProfilesView: React.FC = () => {
   };
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        // Usar datos mock por ahora
-        setUsers(mockUsers);
-        setStats(mockStats);
-        setError('');
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      
+      // Cargar usuarios desde el backend
+      const response = await fetch('http://localhost:8000/api/v2/usuarios/');
+      const data = await response.json();
+      const usuarios = data.results || data || [];
+      
+      const usuariosTransformados = usuarios.map((usuario: any) => ({
+        id: usuario.user?.id || usuario.id,
+        username: usuario.user?.username || usuario.username,
+        firstName: usuario.user?.first_name || '',
+        lastName: usuario.user?.last_name || '',
+        email: usuario.user?.email || usuario.email || '',
+        role: usuario.rol_nombre || usuario.role || 'Usuario',
+        department: usuario.departamento || 'Sin departamento',
+        isActive: usuario.user?.is_active !== undefined ? usuario.user.is_active : true,
+        lastLogin: usuario.user?.last_login?.split('T')[0] || 'Nunca',
+        createdAt: usuario.user?.date_joined?.split('T')[0] || new Date().toISOString().split('T')[0]
+      }));
+      
+      setUsers(usuariosTransformados);
+      
+      const activeUsers = usuariosTransformados.filter((u: any) => u.isActive).length;
+      const adminUsers = usuariosTransformados.filter((u: any) => 
+        u.role?.toLowerCase().includes('admin')
+      ).length;
+      const technicianUsers = usuariosTransformados.filter((u: any) => 
+        u.role?.toLowerCase().includes('técnico') || u.role?.toLowerCase().includes('tecnico')
+      ).length;
+      
+      setStats({
+        totalUsers: usuariosTransformados.length,
+        activeUsers,
+        inactiveUsers: usuariosTransformados.length - activeUsers,
+        adminUsers,
+        technicianUsers
+      });
+      
+      console.log('✅ Usuarios cargados:', usuariosTransformados.length);
+    } catch (err) {
+      console.error("❌ Error fetching users:", err);
+      setError('No se pudo cargar la información de usuarios.');
+      setUsers([]);
+      setStats({ totalUsers: 0, activeUsers: 0, inactiveUsers: 0, adminUsers: 0, technicianUsers: 0 });
       } catch (err) {
         console.error("Error fetching users data:", err);
         setError("No se pudo cargar la información de usuarios.");
