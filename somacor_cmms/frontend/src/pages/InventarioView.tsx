@@ -46,57 +46,16 @@ const InventarioView: React.FC = () => {
   const [showEditForm, setShowEditForm] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
-  // Datos de ejemplo para el diseño
-  const mockStats = {
-    totalItems: 45,
-    lowStock: 1,
-    outOfStock: 0,
-    totalValue: 2150
+  // Calcular estadísticas dinámicamente
+  const stats = {
+    totalItems: inventoryItems.length,
+    lowStock: inventoryItems.filter(item => item.status === 'low').length,
+    outOfStock: inventoryItems.filter(item => item.status === 'out').length,
+    totalValue: inventoryItems.reduce((sum, item) => sum + (item.quantity * item.unitCost), 0)
   };
 
-  const mockInventoryItems: InventoryItem[] = [
-    {
-      id: "1",
-      code: "FILT-001",
-      name: "Filtro de Aire Industrial",
-      category: "Filtros",
-      quantity: 15,
-      minStock: 10,
-      status: "normal",
-      location: "Almacén A - Estante 3",
-      unitCost: 45
-    },
-    {
-      id: "2",
-      code: "ROD-6308",
-      name: "Rodamiento 6308",
-      category: "Rodamientos",
-      quantity: 5,
-      minStock: 8,
-      status: "low",
-      location: "Almacén A - Estante 5",
-      unitCost: 120
-    },
-    {
-      id: "3",
-      code: "ACE-SINT-5L",
-      name: "Aceite Sintético 5L",
-      category: "Lubricantes",
-      quantity: 25,
-      minStock: 15,
-      status: "high",
-      location: "Almacén B - Estante 1",
-      unitCost: 35
-    }
-  ];
-
-  const lowStockAlert = {
-    item: "Rodamiento 6308",
-    code: "ROD-6308",
-    location: "Almacén A - Estante 5",
-    quantity: 5,
-    minStock: 8
-  };
+  // Items con stock bajo para alertas
+  const lowStockItems = inventoryItems.filter(item => item.status === 'low' || item.status === 'out');
 
   useEffect(() => {
     fetchInventory();
@@ -107,33 +66,59 @@ const InventarioView: React.FC = () => {
       setLoading(true);
       setError('');
       
-      // Cargar datos reales del backend (endpoint placeholder)
+      // Cargar datos reales del backend
       try {
-        const response = await fetch('http://localhost:8000/api/v2/inventario/');
-        const data = await response.json();
-        const items = data.results || data || [];
+        const response = await inventarioService.getAll();
+        const items = response.results || response.data || response || [];
         
-        const itemsTransformados = items.map((item: any) => ({
-          id: item.id?.toString(),
-          code: item.codigo || 'SIN-COD',
-          name: item.nombre || 'Sin nombre',
-          category: item.categoria || 'General',
-          quantity: item.cantidad || 0,
-          minStock: item.stock_minimo || 10,
-          status: item.cantidad <= item.stock_minimo ? 'low' : 'normal',
-          location: item.ubicacion || 'Sin ubicación',
-          unitCost: item.costo_unitario || 0
-        }));
+        // Validar que sea un array
+        if (!Array.isArray(items)) {
+          console.warn('Respuesta no es un array:', items);
+          setInventoryItems([]);
+          return;
+        }
+        
+        const itemsTransformados: InventoryItem[] = items.map((item: any) => {
+          // Usar los nombres correctos de campos del backend
+          const cantidad = parseFloat(item.cantidad || 0);
+          const stockMinimo = parseFloat(item.stockminimo || 10);
+          const stockMaximo = item.stockmaximo ? parseFloat(item.stockmaximo) : null;
+          
+          // Determinar estado del stock basado en estado_stock del backend
+          let status: 'normal' | 'low' | 'high' | 'out' = 'normal';
+          if (item.estado_stock === 'sin_stock') {
+            status = 'out';
+          } else if (item.estado_stock === 'stock_bajo') {
+            status = 'low';
+          } else if (item.estado_stock === 'stock_alto') {
+            status = 'high';
+          } else {
+            status = 'normal';
+          }
+          
+          return {
+            id: item.idinventario?.toString() || item.id?.toString(),
+            code: item.codigointerno || 'SIN-COD',
+            name: item.nombreitem || 'Sin nombre',
+            category: item.categoria_nombre || 'General',
+            quantity: cantidad,
+            minStock: stockMinimo,
+            status: status,
+            location: item.ubicacion || 'Sin ubicación',
+            unitCost: parseFloat(item.costounitario || 0)
+          };
+        });
         
         setInventoryItems(itemsTransformados);
-        console.log('✅ Inventario cargado:', itemsTransformados.length);
-      } catch (apiErr) {
-        console.warn('⚠️ API de inventario no disponible, mostrando estado vacío');
+        console.log('✅ Inventario cargado:', itemsTransformados.length, 'items');
+      } catch (apiErr: any) {
+        console.error('❌ Error al cargar inventario:', apiErr);
+        setError(`Error al cargar el inventario: ${apiErr.message || 'Error desconocido'}`);
         setInventoryItems([]);
       }
-    } catch (err) {
-      console.error("❌ Error fetching inventory:", err);
-      setError("No se pudo cargar el inventario.");
+    } catch (err: any) {
+      console.error("❌ Error general:", err);
+      setError(`Error: ${err.message || 'Error desconocido'}`);
       setInventoryItems([]);
     } finally {
       setLoading(false);
@@ -254,9 +239,9 @@ const InventarioView: React.FC = () => {
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{mockStats.totalItems}</div>
+            <div className="text-2xl font-bold">{stats.totalItems}</div>
             <p className="text-xs text-muted-foreground">
-              3 tipos diferentes
+              Items registrados
             </p>
           </CardContent>
         </Card>
@@ -267,7 +252,7 @@ const InventarioView: React.FC = () => {
             <AlertTriangle className="h-4 w-4 text-destructive" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-destructive">{mockStats.lowStock}</div>
+            <div className="text-2xl font-bold text-destructive">{stats.lowStock}</div>
             <p className="text-xs text-muted-foreground">
               Requieren reorden
             </p>
@@ -280,7 +265,7 @@ const InventarioView: React.FC = () => {
             <AlertTriangle className="h-4 w-4 text-destructive" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-destructive">{mockStats.outOfStock}</div>
+            <div className="text-2xl font-bold text-destructive">{stats.outOfStock}</div>
             <p className="text-xs text-muted-foreground">
               Items agotados
             </p>
@@ -293,49 +278,59 @@ const InventarioView: React.FC = () => {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${mockStats.totalValue.toLocaleString()}</div>
+            <div className="text-2xl font-bold">
+              ${Math.round(stats.totalValue).toLocaleString('es-CL')}
+            </div>
             <p className="text-xs text-muted-foreground">
-              Inventario valorizado
+              Valor total en CLP
             </p>
           </CardContent>
         </Card>
       </StatsGrid>
 
       {/* Alertas de stock bajo */}
-      {mockStats.lowStock > 0 && (
+      {lowStockItems.length > 0 && (
         <Card className="border-destructive bg-destructive/5">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-destructive">
               <AlertTriangle className="h-5 w-5" />
               Alertas de Stock Bajo
             </CardTitle>
-            <CardDescription>Items que requieren reabastecimiento</CardDescription>
+            <CardDescription>
+              {lowStockItems.length} item{lowStockItems.length !== 1 ? 's' : ''} que requiere{lowStockItems.length !== 1 ? 'n' : ''} reabastecimiento
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center justify-between p-4 bg-background rounded-lg border">
-              <div className="flex items-center gap-4">
-                <Package className="h-8 w-8 text-muted-foreground" />
-                <div>
-                  <div className="font-medium">{lowStockAlert.item}</div>
-                  <div className="text-sm text-muted-foreground">
-                    {lowStockAlert.code} - {lowStockAlert.location}
+            <div className="space-y-3">
+              {lowStockItems.map(item => (
+                <div key={item.id} className="flex items-center justify-between p-4 bg-background rounded-lg border">
+                  <div className="flex items-center gap-4">
+                    <Package className="h-8 w-8 text-muted-foreground" />
+                    <div>
+                      <div className="font-medium">{item.name}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {item.code} - {item.location}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="text-right">
+                      <div className="flex items-center gap-2 text-destructive">
+                        <AlertTriangle className="h-4 w-4" />
+                        <span className="font-medium">
+                          {item.quantity} unidad{item.quantity !== 1 ? 'es' : ''}
+                        </span>
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        Mínimo: {item.minStock} unidad{item.minStock !== 1 ? 'es' : ''}
+                      </div>
+                    </div>
+                    <Button variant="destructive" size="sm">
+                      Reordenar
+                    </Button>
                   </div>
                 </div>
-              </div>
-              <div className="flex items-center gap-4">
-                <div className="text-right">
-                  <div className="flex items-center gap-2 text-destructive">
-                    <AlertTriangle className="h-4 w-4" />
-                    <span className="font-medium">{lowStockAlert.quantity} unidad</span>
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    Mínimo: {lowStockAlert.minStock} unidad
-                  </div>
-                </div>
-                <Button variant="destructive">
-                  Reordenar
-                </Button>
-              </div>
+              ))}
             </div>
           </CardContent>
         </Card>
@@ -429,7 +424,7 @@ const InventarioView: React.FC = () => {
                     </div>
                   </TableCell>
                   <TableCell>
-                    ${item.unitCost}
+                    ${Math.round(item.unitCost).toLocaleString('es-CL')}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
@@ -463,6 +458,28 @@ const InventarioView: React.FC = () => {
               ))}
             </TableBody>
           </Table>
+          
+          {filteredItems.length === 0 && (
+            <div className="text-center py-8 text-muted-foreground">
+              <Package className="mx-auto h-12 w-12 text-muted-foreground/50" />
+              <h3 className="mt-2 text-sm font-medium">No hay items en el inventario</h3>
+              <p className="mt-1 text-sm">
+                {inventoryItems.length === 0 
+                  ? 'Comienza agregando el primer item al inventario.'
+                  : 'No hay items que coincidan con los filtros seleccionados.'}
+              </p>
+              {inventoryItems.length === 0 && (
+                <Button 
+                  onClick={() => setShowCreateForm(true)}
+                  className="mt-4"
+                  variant="outline"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Agregar Primer Item
+                </Button>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
 

@@ -14,6 +14,7 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2, Package, MapPin, DollarSign } from 'lucide-react';
 import { inventarioService } from '@/services/inventarioService';
+import apiClient from '@/api/apiClient';
 
 interface CreateInventarioFormProps {
   isOpen: boolean;
@@ -58,6 +59,8 @@ const CreateInventarioForm: React.FC<CreateInventarioFormProps> = ({
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [faenas, setFaenas] = useState<any[]>([]);
+  const [loadingFaenas, setLoadingFaenas] = useState(false);
 
   const isEditMode = Boolean(inventarioData);
 
@@ -75,6 +78,27 @@ const CreateInventarioForm: React.FC<CreateInventarioFormProps> = ({
     'Instrumentación',
     'Otros'
   ];
+
+  // Cargar faenas al montar el componente
+  useEffect(() => {
+    const fetchFaenas = async () => {
+      try {
+        setLoadingFaenas(true);
+        const response = await apiClient.get('/v2/faenas/');
+        const faenasData = response.data.results || response.data || [];
+        setFaenas(faenasData);
+      } catch (err) {
+        console.error('Error al cargar faenas:', err);
+        setFaenas([]);
+      } finally {
+        setLoadingFaenas(false);
+      }
+    };
+
+    if (isOpen) {
+      fetchFaenas();
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     if (inventarioData) {
@@ -280,21 +304,33 @@ const CreateInventarioForm: React.FC<CreateInventarioFormProps> = ({
               </Select>
             </div>
 
-            {/* Ubicación */}
+            {/* Ubicación (Faena) */}
             <div>
               <Label htmlFor="ubicacion" className="text-sm font-medium flex items-center gap-1">
                 <MapPin className="h-4 w-4" />
-                Ubicación
+                Ubicación (Faena)
               </Label>
-              <Input
-                id="ubicacion"
-                type="text"
-                placeholder="Ej: Almacén A - Estante 3"
+              <Select
                 value={formData.ubicacion}
-                onChange={(e) => handleInputChange('ubicacion', e.target.value)}
-                disabled={loading}
-                className="mt-1"
-              />
+                onValueChange={(value) => handleInputChange('ubicacion', value)}
+                disabled={loading || loadingFaenas}
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder={loadingFaenas ? "Cargando faenas..." : "Seleccionar faena"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {faenas.length === 0 && !loadingFaenas && (
+                    <SelectItem value="sin-faenas" disabled>
+                      No hay faenas disponibles
+                    </SelectItem>
+                  )}
+                  {faenas.map((faena) => (
+                    <SelectItem key={faena.idfaena} value={faena.nombrefaena}>
+                      {faena.nombrefaena}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Cantidad */}

@@ -20,6 +20,9 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import CreateUnplannedMaintenanceForm from '@/components/forms/CreateUnplannedMaintenanceForm';
+import UnplannedMaintenanceDetailModal from '@/components/modals/UnplannedMaintenanceDetailModal';
+import AssignTechnicianModal from '@/components/modals/AssignTechnicianModal';
+import CreateWorkOrderForm from '@/components/forms/CreateWorkOrderForm';
 
 // =================================================================================
 // TIPOS DE DATOS
@@ -62,6 +65,10 @@ const UnplannedMaintenanceView: React.FC = () => {
   const [priorityFilter, setPriorityFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [showNewForm, setShowNewForm] = useState(false);
+  const [selectedMaintenance, setSelectedMaintenance] = useState<UnplannedMaintenance | null>(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showEditForm, setShowEditForm] = useState(false);
+  const [showAssignModal, setShowAssignModal] = useState(false);
 
   // Datos de ejemplo para el diseño
   const mockMaintenances: UnplannedMaintenance[] = [
@@ -138,35 +145,57 @@ const UnplannedMaintenanceView: React.FC = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      setError('');
+      setError(null);
       
-      // Cargar órdenes de trabajo correctivas/no planificadas
-      const response = await fetch('http://localhost:8000/api/v2/ordenes-trabajo/');
-      const data = await response.json();
-      const ordenes = data.results || data || [];
+      // Importar el servicio de órdenes de trabajo
+      const { ordenesTrabajoServiceReal } = await import('@/services/apiServiceReal');
+      
+      // Cargar todas las órdenes de trabajo
+      const response = await ordenesTrabajoServiceReal.getAll({ limit: 100 });
+      const ordenes = response.results || response.data || response || [];
       
       // Filtrar órdenes correctivas o de emergencia
-      const ordenesNoPlanificadas = ordenes.filter((orden: any) => 
-        orden.tipo_mantenimiento_nombre?.toLowerCase().includes('correctivo') ||
-        orden.tipo_mantenimiento_nombre?.toLowerCase().includes('emergencia')
-      );
+      const ordenesNoPlanificadas = ordenes.filter((orden: any) => {
+        const tipoMant = orden.tipo_mantenimiento_nombre?.toLowerCase() || '';
+        return tipoMant.includes('correctivo') || 
+               tipoMant.includes('emergencia') ||
+               tipoMant.includes('urgente');
+      });
       
-      const mantenimientosTransformados = ordenesNoPlanificadas.map((orden: any) => ({
-        id: orden.idordentrabajo?.toString(),
-        title: orden.descripcionproblemareportado || 'Reporte de falla',
-        equipment: orden.equipo_nombre || 'Sin equipo',
-        equipmentCode: orden.equipo_codigo || 'N/A',
-        reportedBy: orden.solicitante_nombre || 'Sin reportar',
-        reportedDate: orden.fechareportefalla?.split('T')[0] || new Date().toISOString().split('T')[0],
-        priority: orden.prioridad?.toLowerCase() || 'media',
-        status: orden.estado_nombre === 'Completada' ? 'completado' : 
-                orden.estado_nombre === 'En Proceso' ? 'en_progreso' : 'reportado',
-        description: orden.observacionesfinales || orden.descripcionproblemareportado || '',
-        location: orden.faena_nombre || 'Sin ubicación',
-        estimatedTime: '2 horas',
-        assignedTo: orden.tecnico_nombre,
-        images: []
-      }));
+      const mantenimientosTransformados = ordenesNoPlanificadas.map((orden: any) => {
+        // Determinar prioridad
+        let prioridad = orden.prioridad?.toLowerCase() || 'media';
+        if (prioridad === 'crítica') prioridad = 'urgente';
+        
+        // Determinar estado
+        let estado = 'reportado';
+        const estadoNombre = orden.estado_nombre?.toLowerCase() || '';
+        if (estadoNombre.includes('completada') || estadoNombre.includes('cerrada')) {
+          estado = 'completado';
+        } else if (estadoNombre.includes('progreso')) {
+          estado = 'en_progreso';
+        } else if (estadoNombre.includes('asignada')) {
+          estado = 'asignado';
+        }
+        
+        return {
+          id: orden.idordentrabajo?.toString() || orden.id?.toString(),
+          title: orden.descripcionproblemareportado || 'Reporte de falla',
+          equipment: orden.equipo_nombre || 'Sin equipo',
+          equipmentCode: orden.numeroot || 'N/A',
+          reportedBy: orden.solicitante_nombre || 'Sin reportar',
+          reportedDate: orden.fechareportefalla?.split('T')[0] || new Date().toISOString().split('T')[0],
+          priority: prioridad as 'baja' | 'media' | 'alta' | 'urgente',
+          status: estado as 'reportado' | 'en_revision' | 'asignado' | 'en_progreso' | 'completado' | 'cancelado',
+          description: orden.observacionesfinales || orden.descripcionproblemareportado || '',
+          location: orden.faena_nombre || 'Sin ubicación',
+          estimatedTime: '2 horas',
+          assignedTo: orden.tecnico_nombre,
+          images: [],
+          // Guardar la orden completa para edición
+          _ordenOriginal: orden
+        };
+      });
       
       setMaintenances(mantenimientosTransformados);
       
@@ -175,20 +204,37 @@ const UnplannedMaintenanceView: React.FC = () => {
         pendientes: mantenimientosTransformados.filter((m: any) => m.status === 'reportado').length,
         enProgreso: mantenimientosTransformados.filter((m: any) => m.status === 'en_progreso').length,
         completados: mantenimientosTransformados.filter((m: any) => m.status === 'completado').length,
-        urgentes: mantenimientosTransformados.filter((m: any) => m.priority === 'urgente' || m.priority === 'crítica').length
+        urgentes: mantenimientosTransformados.filter((m: any) => m.priority === 'urgente').length
       });
       
       console.log('✅ Mantenimientos no planificados cargados:', mantenimientosTransformados.length);
-    } catch (err) {
+    } catch (err: any) {
       console.error("❌ Error fetching maintenance data:", err);
-      setError("No se pudo cargar la información de mantenimientos.");
+      setError(`Error al cargar mantenimientos: ${err.message || 'Error desconocido'}`);
       setMaintenances([]);
       setStats({ totalReportes: 0, pendientes: 0, enProgreso: 0, completados: 0, urgentes: 0 });
     } finally {
       setLoading(false);
     }
   };
-  }, []);
+
+  // Manejar acciones
+  const handleView = (maintenance: UnplannedMaintenance) => {
+    setSelectedMaintenance(maintenance);
+    setShowDetailModal(true);
+  };
+
+  const handleEdit = (maintenance: UnplannedMaintenance) => {
+    setSelectedMaintenance(maintenance);
+    setShowDetailModal(false);
+    setShowEditForm(true);
+  };
+
+  const handleAssign = (maintenance: UnplannedMaintenance) => {
+    setSelectedMaintenance(maintenance);
+    setShowDetailModal(false);
+    setShowAssignModal(true);
+  };
 
   // Filtrar mantenimientos
   const filteredMaintenances = maintenances.filter(maintenance => {
@@ -433,14 +479,29 @@ const UnplannedMaintenanceView: React.FC = () => {
                     </div>
                     
                     <div className="flex gap-1 ml-4">
-                      <Button variant="outline" size="sm">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleView(maintenance)}
+                        title="Ver detalles"
+                      >
                         Ver
                       </Button>
-                      <Button variant="outline" size="sm">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleEdit(maintenance)}
+                        title="Editar reporte"
+                      >
                         Editar
                       </Button>
                       {maintenance.status === 'reportado' && (
-                        <Button variant="outline" size="sm">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handleAssign(maintenance)}
+                          title="Asignar técnico"
+                        >
                           Asignar
                         </Button>
                       )}
@@ -466,10 +527,64 @@ const UnplannedMaintenanceView: React.FC = () => {
         isOpen={showNewForm}
         onClose={() => setShowNewForm(false)}
         onSuccess={() => {
-          // Recargar datos después de crear
+          setShowNewForm(false);
+          fetchData();
           console.log('Mantenimiento no planificado creado exitosamente');
         }}
       />
+
+      {/* Modal de detalles del mantenimiento */}
+      <UnplannedMaintenanceDetailModal
+        isOpen={showDetailModal}
+        onClose={() => {
+          setShowDetailModal(false);
+          setSelectedMaintenance(null);
+        }}
+        maintenance={selectedMaintenance}
+        onEdit={handleEdit}
+        onAssign={handleAssign}
+      />
+
+      {/* Formulario de edición (usando CreateWorkOrderForm) */}
+      {selectedMaintenance && (() => {
+        const ordenOriginal = (selectedMaintenance as any)._ordenOriginal;
+        console.log('🔍 selectedMaintenance:', selectedMaintenance);
+        console.log('🔍 _ordenOriginal:', ordenOriginal);
+        
+        return (
+          <CreateWorkOrderForm
+            isOpen={showEditForm}
+            onClose={() => {
+              setShowEditForm(false);
+              setSelectedMaintenance(null);
+            }}
+            onSuccess={() => {
+              setShowEditForm(false);
+              setSelectedMaintenance(null);
+              fetchData();
+            }}
+            ordenData={ordenOriginal}
+          />
+        );
+      })()}
+
+      {/* Modal de asignación de técnico */}
+      {selectedMaintenance && (
+        <AssignTechnicianModal
+          isOpen={showAssignModal}
+          onClose={() => {
+            setShowAssignModal(false);
+            setSelectedMaintenance(null);
+          }}
+          maintenanceId={selectedMaintenance.id}
+          maintenanceTitle={selectedMaintenance.title}
+          onSuccess={() => {
+            setShowAssignModal(false);
+            setSelectedMaintenance(null);
+            fetchData();
+          }}
+        />
+      )}
     </PageLayout>
   );
 };

@@ -23,7 +23,30 @@ router.register(r'checklist-categories', views_v2.ChecklistCategoryViewSet)
 router.register(r'checklist-items', views_v2.ChecklistItemViewSet)
 router.register(r'checklist-instance', views_v2.ChecklistInstanceViewSet)
 router.register(r'inventario', views_v2.InventarioViewSet, basename='inventario')
+router.register(r'categorias-inventario', views_v2.CategoriasInventarioViewSet)
+router.register(r'proveedores', views_v2.ProveedoresViewSet)
+router.register(r'movimientos-inventario', views_v2.MovimientosInventarioViewSet)
 router.register(r'roles', views_v2.RolesViewSet)
+router.register(r'tecnicos', views_v2.TecnicosViewSet)
+router.register(r'especialidades', views_v2.EspecialidadesViewSet)
+
+# Registrar ViewSets de catálogos
+router.register(r'estados-equipo', views_v2.EstadosEquipoViewSet)
+router.register(r'estados-orden-trabajo', views_v2.EstadosOrdenTrabajoViewSet)
+router.register(r'tipos-mantenimiento-ot', views_v2.TiposMantenimientoOTViewSet)
+router.register(r'tipos-tarea', views_v2.TiposTareaViewSet)
+router.register(r'tareas-estandar', views_v2.TareasEstandarViewSet)
+
+# Registrar ViewSets de planes de mantenimiento
+router.register(r'planes-mantenimiento', views_v2.PlanesMantenimientoViewSet)
+router.register(r'detalles-plan-mantenimiento', views_v2.DetallesPlanMantenimientoViewSet)
+
+# Registrar ViewSets de actividades y evidencias
+router.register(r'actividades-orden-trabajo', views_v2.ActividadesOrdenTrabajoViewSet)
+router.register(r'evidencias-ot', views_v2.EvidenciaOTViewSet)
+
+# Registrar ViewSets de agendas
+router.register(r'agendas', views_v2.AgendasViewSet)
 
 # Workflows especializados
 router.register(r'checklist-workflow', ChecklistWorkflowViewSet, basename='checklist-workflow')

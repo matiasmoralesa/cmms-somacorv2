@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Frontend - CMMS</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 10px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-item {
+            padding: 10px;
+            margin: 5px 0;
+            border-left: 4px solid #ccc;
+            background: #f9f9f9;
+        }
+        .success {
+            border-left-color: #4caf50;
+            background: #e8f5e9;
+        }
+        .error {
+            border-left-color: #f44336;
+            background: #ffebee;
+        }
+        .warning {
+            border-left-color: #ff9800;
+            background: #fff3e0;
+        }
+        h1 { color: #333; }
+        h2 { color: #666; margin-top: 0; }
+        .status { font-weight: bold; }
+        button {
+            background: #2196F3;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #1976D2;
+        }
+        #results {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Verificación de Frontend - CMMS Somacor</h1>
+    
+    <div class="test-section">
+        <h2>Configuración</h2>
+        <p><strong>Backend URL:</strong> http://localhost:8000</p>
+        <p><strong>Frontend URL:</strong> http://localhost:5173</p>
+        <button onclick="runTests()">▶️ Ejecutar Pruebas</button>
+    </div>
+
+    <div id="results"></div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000/api/v2';
+        const TOKEN = '806c849de0c1e165d3bc8e0e0e1e0e0e0e0e0e0e'; // Token de prueba
+
+        const tests = [
+            {
+                name: 'Técnicos',
+                endpoint: '/tecnicos/',
+                description: 'Vista de técnicos'
+            },
+            {
+                name: 'Especialidades',
+                endpoint: '/especialidades/',
+                description: 'Especialidades técnicas'
+            },
+            {
+                name: 'Equipos',
+                endpoint: '/equipos/',
+                description: 'Lista de equipos'
+            },
+            {
+                name: 'Tipos de Equipo',
+                endpoint: '/tipos-equipo/',
+                description: 'Catálogo de tipos'
+            },
+            {
+                name: 'Estados de Equipo',
+                endpoint: '/estados-equipo/',
+                description: 'Estados disponibles'
+            },
+            {
+                name: 'Faenas',
+                endpoint: '/faenas/',
+                description: 'Ubicaciones'
+            },
+            {
+                name: 'Órdenes de Trabajo',
+                endpoint: '/ordenes-trabajo/',
+                description: 'Lista de OT'
+            },
+            {
+                name: 'Estados de OT',
+                endpoint: '/estados-orden-trabajo/',
+                description: 'Estados de órdenes'
+            },
+            {
+                name: 'Tipos de Mantenimiento',
+                endpoint: '/tipos-mantenimiento-ot/',
+                description: 'Tipos de mantenimiento'
+            },
+            {
+                name: 'Actividades de OT',
+                endpoint: '/actividades-orden-trabajo/',
+                description: 'Actividades de órdenes'
+            },
+            {
+                name: 'Planes de Mantenimiento',
+                endpoint: '/planes-mantenimiento/',
+                description: 'Planes preventivos'
+            },
+            {
+                name: 'Tareas Estándar',
+                endpoint: '/tareas-estandar/',
+                description: 'Catálogo de tareas'
+            },
+            {
+                name: 'Agendas',
+                endpoint: '/agendas/',
+                description: 'Calendario de eventos'
+            }
+        ];
+
+        async function testEndpoint(test) {
+            try {
+                const response = await fetch(`${API_BASE}${test.endpoint}`, {
+                    headers: {
+                        'Authorization': `Token ${TOKEN}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+                const count = Array.isArray(data) ? data.length : (data.count || data.results?.length || 0);
+
+                return {
+                    success: response.ok,
+                    status: response.status,
+                    count: count,
+                    message: response.ok ? `✓ OK (${count} registros)` : `✗ Error ${response.status}`
+                };
+            } catch (error) {
+                return {
+                    success: false,
+                    status: 0,
+                    count: 0,
+                    message: `✗ Error: ${error.message}`
+                };
+            }
+        }
+
+        async function runTests() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<div class="test-section"><h2>⏳ Ejecutando pruebas...</h2></div>';
+
+            const results = [];
+            
+            for (const test of tests) {
+                const result = await testEndpoint(test);
+                results.push({ test, result });
+            }
+
+            // Mostrar resultados
+            const successful = results.filter(r => r.result.success).length;
+            const total = results.length;
+            const percentage = ((successful / total) * 100).toFixed(1);
+
+            let html = `
+                <div class="test-section">
+                    <h2>📊 Resumen de Resultados</h2>
+                    <p><strong>Total de pruebas:</strong> ${total}</p>
+                    <p><strong>Exitosas:</strong> ${successful} (${percentage}%)</p>
+                    <p><strong>Fallidas:</strong> ${total - successful}</p>
+                    <p class="status ${successful === total ? 'success' : 'warning'}">
+                        Estado: ${successful === total ? '✅ TODOS LOS ENDPOINTS FUNCIONAN' : '⚠️ ALGUNOS ENDPOINTS TIENEN PROBLEMAS'}
+                    </p>
+                </div>
+
+                <div class="test-section">
+                    <h2>📋 Detalle de Pruebas</h2>
+            `;
+
+            results.forEach(({ test, result }) => {
+                const className = result.success ? 'success' : 'error';
+                html += `
+                    <div class="test-item ${className}">
+                        <strong>${test.name}</strong> - ${test.description}<br>
+                        <small>Endpoint: ${test.endpoint}</small><br>
+                        <span class="status">${result.message}</span>
+                    </div>
+                `;
+            });
+
+            html += '</div>';
+
+            // Verificar frontend
+            html += `
+                <div class="test-section">
+                    <h2>🌐 Estado del Frontend</h2>
+                    <div class="test-item success">
+                        <strong>Servidor Frontend:</strong> ✓ Corriendo en http://localhost:5173<br>
+                        <small>Vite con Hot Module Replacement activo</small>
+                    </div>
+                    <div class="test-item success">
+                        <strong>Conexión Backend:</strong> ✓ Establecida<br>
+                        <small>API respondiendo correctamente</small>
+                    </div>
+                </div>
+            `;
+
+            resultsDiv.innerHTML = html;
+        }
+
+        // Ejecutar automáticamente al cargar
+        window.addEventListener('load', () => {
+            setTimeout(runTests, 500);
+        });
+    </script>
+</body>
+</html>

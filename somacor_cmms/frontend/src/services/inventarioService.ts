@@ -29,7 +29,7 @@ export interface MovimientoInventario {
 }
 
 class InventarioService {
-  private baseUrl = '/v2/inventario';
+  private baseUrl = '/v2/inventario/';
 
   async getAll(params?: any): Promise<{results: ItemInventario[], count: number}> {
     const response = await apiClient.get(this.baseUrl, { params });
@@ -42,7 +42,7 @@ class InventarioService {
   }
 
   async create(data: Omit<ItemInventario, 'id'>): Promise<ItemInventario> {
-    const response = await apiClient.post(this.baseUrl, data);
+    const response = await apiClient.post(this.baseUrl.replace(/\/$/, ''), data);
     return response.data;
   }
 

@@ -463,3 +463,250 @@ class ChecklistImage(models.Model):
         ordering = ['-fecha_subida']
 
 
+
+
+# --- MODELO DE TÉCNICOS ---
+
+class Especialidades(models.Model):
+    """
+    Especialidades técnicas disponibles
+    """
+    idespecialidad = models.AutoField(db_column='IDEspecialidad', primary_key=True)
+    nombreespecialidad = models.CharField(db_column='NombreEspecialidad', unique=True, max_length=100)
+    descripcion = models.TextField(db_column='Descripcion', blank=True, null=True)
+    activa = models.BooleanField(db_column='Activa', default=True)
+    
+    def __str__(self):
+        return self.nombreespecialidad
+    
+    class Meta:
+        db_table = 'especialidades'
+        ordering = ['nombreespecialidad']
+        verbose_name = 'Especialidad'
+        verbose_name_plural = 'Especialidades'
+
+
+class Tecnicos(models.Model):
+    """
+    Técnicos del sistema con sus especialidades y disponibilidad
+    """
+    ESTADO_CHOICES = [
+        ('disponible', 'Disponible'),
+        ('ocupado', 'Ocupado'),
+        ('no_disponible', 'No Disponible'),
+    ]
+    
+    idtecnico = models.AutoField(db_column='IDTecnico', primary_key=True)
+    usuario = models.OneToOneField(User, on_delete=models.CASCADE, db_column='IDUsuario', related_name='tecnico')
+    especialidades = models.ManyToManyField(Especialidades, db_column='Especialidades', related_name='tecnicos', blank=True)
+    telefono = models.CharField(db_column='Telefono', max_length=20, blank=True, null=True)
+    email = models.EmailField(db_column='Email', max_length=100, blank=True, null=True)
+    cargo = models.CharField(db_column='Cargo', max_length=100, blank=True, null=True)
+    estado = models.CharField(db_column='Estado', max_length=20, choices=ESTADO_CHOICES, default='disponible')
+    activo = models.BooleanField(db_column='Activo', default=True)
+    fecha_ingreso = models.DateField(db_column='FechaIngreso', blank=True, null=True)
+    
+    @property
+    def nombre_completo(self):
+        """Retorna el nombre completo del técnico"""
+        if self.usuario.first_name and self.usuario.last_name:
+            return f"{self.usuario.first_name} {self.usuario.last_name}"
+        return self.usuario.username
+    
+    @property
+    def ordenes_activas(self):
+        """Cantidad de órdenes de trabajo activas asignadas al técnico"""
+        from django.db.models import Q
+        return self.usuario.ordenestrabajo_set.filter(
+            Q(idestadoot__nombreestadoot='Abierta') |
+            Q(idestadoot__nombreestadoot='En Progreso') |
+            Q(idestadoot__nombreestadoot='Asignada')
+        ).count()
+    
+    @property
+    def especialidades_list(self):
+        """Lista de nombres de especialidades"""
+        return list(self.especialidades.values_list('nombreespecialidad', flat=True))
+    
+    def __str__(self):
+        return self.nombre_completo
+    
+    class Meta:
+        db_table = 'tecnicos'
+        ordering = ['usuario__first_name', 'usuario__last_name']
+        verbose_name = 'Técnico'
+        verbose_name_plural = 'Técnicos'
+
+
+# =============================================================================
+# MODELOS DE INVENTARIO
+# =============================================================================
+
+class CategoriasInventario(models.Model):
+    """
+    Categorías para clasificar items del inventario
+    """
+    idcategoria = models.AutoField(db_column='IDCategoria', primary_key=True)
+    nombrecategoria = models.CharField(db_column='NombreCategoria', max_length=100, unique=True)
+    descripcion = models.TextField(db_column='Descripcion', blank=True, null=True)
+    activa = models.BooleanField(db_column='Activa', default=True)
+    
+    def __str__(self):
+        return self.nombrecategoria
+    
+    class Meta:
+        db_table = 'categoriasinventario'
+        ordering = ['nombrecategoria']
+        verbose_name = 'Categoría de Inventario'
+        verbose_name_plural = 'Categorías de Inventario'
+
+
+class Proveedores(models.Model):
+    """
+    Proveedores de items del inventario
+    """
+    idproveedor = models.AutoField(db_column='IDProveedor', primary_key=True)
+    nombreproveedor = models.CharField(db_column='NombreProveedor', max_length=150)
+    rut = models.CharField(db_column='RUT', max_length=12, unique=True, blank=True, null=True)
+    contacto = models.CharField(db_column='Contacto', max_length=100, blank=True, null=True)
+    telefono = models.CharField(db_column='Telefono', max_length=20, blank=True, null=True)
+    email = models.EmailField(db_column='Email', blank=True, null=True)
+    direccion = models.TextField(db_column='Direccion', blank=True, null=True)
+    activo = models.BooleanField(db_column='Activo', default=True)
+    
+    def __str__(self):
+        return self.nombreproveedor
+    
+    class Meta:
+        db_table = 'proveedores'
+        ordering = ['nombreproveedor']
+        verbose_name = 'Proveedor'
+        verbose_name_plural = 'Proveedores'
+
+
+class Inventario(models.Model):
+    """
+    Items del inventario con control de stock
+    """
+    UNIDAD_MEDIDA_CHOICES = [
+        ('unidad', 'Unidad'),
+        ('metro', 'Metro'),
+        ('litro', 'Litro'),
+        ('kilogramo', 'Kilogramo'),
+        ('caja', 'Caja'),
+        ('rollo', 'Rollo'),
+        ('galón', 'Galón'),
+        ('par', 'Par'),
+        ('juego', 'Juego'),
+    ]
+    
+    ESTADO_CHOICES = [
+        ('activo', 'Activo'),
+        ('inactivo', 'Inactivo'),
+        ('descontinuado', 'Descontinuado'),
+    ]
+    
+    idinventario = models.AutoField(db_column='IDInventario', primary_key=True)
+    codigointerno = models.CharField(db_column='CodigoInterno', max_length=50, unique=True)
+    codigobarras = models.CharField(db_column='CodigoBarras', max_length=100, blank=True, null=True)
+    nombreitem = models.CharField(db_column='NombreItem', max_length=200)
+    descripcion = models.TextField(db_column='Descripcion', blank=True, null=True)
+    
+    # Relaciones
+    idcategoria = models.ForeignKey(CategoriasInventario, on_delete=models.PROTECT, db_column='IDCategoria')
+    idproveedor = models.ForeignKey(Proveedores, on_delete=models.SET_NULL, db_column='IDProveedor', null=True, blank=True)
+    
+    # Stock y ubicación
+    cantidad = models.DecimalField(db_column='Cantidad', max_digits=10, decimal_places=2, default=0)
+    stockminimo = models.DecimalField(db_column='StockMinimo', max_digits=10, decimal_places=2, default=0)
+    stockmaximo = models.DecimalField(db_column='StockMaximo', max_digits=10, decimal_places=2, null=True, blank=True)
+    unidadmedida = models.CharField(db_column='UnidadMedida', max_length=20, choices=UNIDAD_MEDIDA_CHOICES, default='unidad')
+    ubicacion = models.CharField(db_column='Ubicacion', max_length=100, blank=True, null=True)
+    
+    # Costos
+    costounitario = models.DecimalField(db_column='CostoUnitario', max_digits=12, decimal_places=2, default=0)
+    precioventa = models.DecimalField(db_column='PrecioVenta', max_digits=12, decimal_places=2, null=True, blank=True)
+    
+    # Control
+    estado = models.CharField(db_column='Estado', max_length=20, choices=ESTADO_CHOICES, default='activo')
+    fechacreacion = models.DateTimeField(db_column='FechaCreacion', auto_now_add=True)
+    fechaactualizacion = models.DateTimeField(db_column='FechaActualizacion', auto_now=True)
+    usuariocreacion = models.ForeignKey(User, on_delete=models.PROTECT, db_column='UsuarioCreacion', related_name='inventario_creado')
+    
+    @property
+    def valor_total(self):
+        """Valor total del stock (cantidad × costo unitario)"""
+        return float(self.cantidad) * float(self.costounitario)
+    
+    @property
+    def estado_stock(self):
+        """Estado del stock basado en cantidad y límites"""
+        if self.cantidad == 0:
+            return 'sin_stock'
+        elif self.cantidad <= self.stockminimo:
+            return 'stock_bajo'
+        elif self.stockmaximo and self.cantidad >= self.stockmaximo:
+            return 'stock_alto'
+        else:
+            return 'stock_normal'
+    
+    @property
+    def categoria_nombre(self):
+        """Nombre de la categoría"""
+        return self.idcategoria.nombrecategoria if self.idcategoria else 'Sin categoría'
+    
+    @property
+    def proveedor_nombre(self):
+        """Nombre del proveedor"""
+        return self.idproveedor.nombreproveedor if self.idproveedor else 'Sin proveedor'
+    
+    def __str__(self):
+        return f"{self.codigointerno} - {self.nombreitem}"
+    
+    class Meta:
+        db_table = 'inventario'
+        ordering = ['codigointerno']
+        verbose_name = 'Item de Inventario'
+        verbose_name_plural = 'Items de Inventario'
+
+
+class MovimientosInventario(models.Model):
+    """
+    Registro de movimientos de entrada y salida del inventario
+    """
+    TIPO_MOVIMIENTO_CHOICES = [
+        ('entrada', 'Entrada'),
+        ('salida', 'Salida'),
+        ('ajuste_positivo', 'Ajuste Positivo'),
+        ('ajuste_negativo', 'Ajuste Negativo'),
+        ('transferencia', 'Transferencia'),
+    ]
+    
+    idmovimiento = models.AutoField(db_column='IDMovimiento', primary_key=True)
+    idinventario = models.ForeignKey(Inventario, on_delete=models.CASCADE, db_column='IDInventario', related_name='movimientos')
+    tipomovimiento = models.CharField(db_column='TipoMovimiento', max_length=20, choices=TIPO_MOVIMIENTO_CHOICES)
+    cantidad = models.DecimalField(db_column='Cantidad', max_digits=10, decimal_places=2)
+    cantidadanterior = models.DecimalField(db_column='CantidadAnterior', max_digits=10, decimal_places=2)
+    cantidadnueva = models.DecimalField(db_column='CantidadNueva', max_digits=10, decimal_places=2)
+    
+    # Información del movimiento
+    motivo = models.CharField(db_column='Motivo', max_length=200, blank=True, null=True)
+    observaciones = models.TextField(db_column='Observaciones', blank=True, null=True)
+    documento = models.CharField(db_column='Documento', max_length=100, blank=True, null=True)  # Factura, OC, etc.
+    
+    # Relaciones opcionales
+    idordentrabajo = models.ForeignKey('OrdenesTrabajo', on_delete=models.SET_NULL, db_column='IDOrdenTrabajo', null=True, blank=True)
+    idproveedor = models.ForeignKey(Proveedores, on_delete=models.SET_NULL, db_column='IDProveedor', null=True, blank=True)
+    
+    # Control
+    fechamovimiento = models.DateTimeField(db_column='FechaMovimiento', auto_now_add=True)
+    usuariomovimiento = models.ForeignKey(User, on_delete=models.PROTECT, db_column='UsuarioMovimiento')
+    
+    def __str__(self):
+        return f"{self.tipomovimiento} - {self.idinventario.nombreitem} - {self.cantidad}"
+    
+    class Meta:
+        db_table = 'movimientosinventario'
+        ordering = ['-fechamovimiento']
+        verbose_name = 'Movimiento de Inventario'
+        verbose_name_plural = 'Movimientos de Inventario'

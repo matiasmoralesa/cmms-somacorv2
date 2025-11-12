@@ -28,6 +28,7 @@ const EjecucionOTView = React.lazy(() => import('./pages/EjecucionOTView'));
 const ChecklistDiarioView = React.lazy(() => import('./pages/ChecklistDiarioView'));
 const InventarioView = React.lazy(() => import('./pages/InventarioView'));
 const TecnicosView = React.lazy(() => import('./pages/TecnicosView'));
+const TecnicoDetalleView = React.lazy(() => import('./pages/TecnicoDetalleView'));
 const EquipoDetalleView = React.lazy(() => import('./pages/EquipoDetalleView'));
 const EquipoEditarView = React.lazy(() => import('./pages/EquipoEditarView'));
 
@@ -132,14 +133,24 @@ function App() {
             } 
           />
           
-          <Route 
-            path="tecnicos" 
-            element={
-              <Suspense fallback={<LoadingSpinner text="Cargando Técnicos..." />}>
-                <TecnicosView />
-              </Suspense>
-            } 
-          />
+          <Route path="tecnicos">
+            <Route 
+              index 
+              element={
+                <Suspense fallback={<LoadingSpinner text="Cargando Técnicos..." />}>
+                  <TecnicosView />
+                </Suspense>
+              } 
+            />
+            <Route 
+              path=":id" 
+              element={
+                <Suspense fallback={<LoadingSpinner text="Cargando Perfil..." />}>
+                  <TecnicoDetalleView />
+                </Suspense>
+              } 
+            />
+          </Route>
           
           <Route 
             path="configuracion" 

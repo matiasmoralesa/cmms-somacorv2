@@ -24,27 +24,28 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { ordenesTrabajoService } from '@/services/apiService';
 
 // =================================================================================
 // TIPOS DE DATOS
 // =================================================================================
 
 interface OrdenTrabajo {
-  id: string;
-  title: string;
-  equipment: string;
-  equipmentCode: string;
-  type: 'preventivo' | 'correctivo' | 'predictivo';
-  priority: 'baja' | 'media' | 'alta' | 'urgente';
-  status: 'programado' | 'en_progreso' | 'completado' | 'cancelado';
-  assignedTo: string;
-  scheduledDate: string;
-  description: string;
-  location: string;
-  estimatedDuration: string;
-  actualDuration?: string;
-  startTime?: string;
-  endTime?: string;
+  idordentrabajo: number;
+  numeroot: string;
+  descripcionproblemareportado: string;
+  prioridad: string;
+  equipo_nombre: string;
+  equipo_codigo: string;
+  tecnico_nombre: string;
+  estado_nombre: string;
+  fechareportefalla: string;
+  tipo_mantenimiento_nombre?: string;
+  ubicacion?: string;
+  duracion_estimada?: string;
+  duracion_real?: string;
+  hora_inicio?: string;
+  hora_fin?: string;
 }
 
 interface Actividad {
@@ -86,81 +87,62 @@ const EjecucionOTView: React.FC = () => {
   const [currentActivity, setCurrentActivity] = useState<number | null>(null);
   const [observations, setObservations] = useState<Record<number, string>>({});
 
-  // Datos de ejemplo para el diseño
-  const mockOrden: OrdenTrabajo = {
-    id: id || '1',
-    title: 'Mantenimiento Preventivo Compresor A-101',
-    equipment: 'Compresor de Aire Principal',
-    equipmentCode: 'EQ-001',
-    type: 'preventivo',
-    priority: 'media',
-    status: 'en_progreso',
-    assignedTo: 'Juan Pérez',
-    scheduledDate: '2024-10-20',
-    description: 'Mantenimiento preventivo trimestral del compresor principal incluyendo cambio de filtros, lubricación e inspección visual',
-    location: 'Planta Norte - Sector A',
-    estimatedDuration: '4 horas',
-    actualDuration: '2.5 horas',
-    startTime: '08:00',
-    endTime: '10:30'
-  };
-
-  const mockActividades: Actividad[] = [
-    {
-      id: 1,
-      name: 'Cambio de Filtros',
-      description: 'Reemplazo de filtros de aire, aceite y combustible',
-      status: 'completada',
-      estimatedTime: '1 hora',
-      actualTime: '45 minutos',
-      startTime: '08:00',
-      endTime: '08:45',
-      observations: 'Filtros en buen estado, reemplazo preventivo realizado',
-      measurements: [
-        { parameter: 'Presión de aire', value: '7.2', unit: 'bar' },
-        { parameter: 'Temperatura', value: '65', unit: '°C' }
-      ],
-      images: ['filtro_antes.jpg', 'filtro_despues.jpg']
-    },
-    {
-      id: 2,
-      name: 'Lubricación',
-      description: 'Lubricación de componentes móviles y verificación de niveles',
-      status: 'en_progreso',
-      estimatedTime: '1.5 horas',
-      startTime: '08:45',
-      observations: 'Iniciando lubricación de rodamientos principales'
-    },
-    {
-      id: 3,
-      name: 'Inspección Visual',
-      description: 'Inspección visual general del equipo y componentes',
-      status: 'pendiente',
-      estimatedTime: '1.5 horas'
-    }
-  ];
-
-  const mockStats: ExecutionStats = {
-    totalActivities: 3,
-    completedActivities: 1,
-    inProgressActivities: 1,
-    pendingActivities: 1,
-    totalTime: '4 horas',
-    actualTime: '2.5 horas'
-  };
-
   useEffect(() => {
     const fetchData = async () => {
+      if (!id) {
+        setError("ID de orden de trabajo no proporcionado");
+        setLoading(false);
+        return;
+      }
+
       try {
         setLoading(true);
-        // Usar datos mock por ahora
-        setOrden(mockOrden);
-        setActividades(mockActividades);
-        setStats(mockStats);
         setError('');
-      } catch (err) {
+        
+        // Cargar orden de trabajo desde el backend
+        const ordenData = await ordenesTrabajoService.getById(parseInt(id));
+        
+        // Mapear datos del backend al formato del componente
+        const mappedOrden: OrdenTrabajo = {
+          idordentrabajo: ordenData.idordentrabajo,
+          numeroot: ordenData.numeroot,
+          descripcionproblemareportado: ordenData.descripcionproblemareportado || 'Sin descripción',
+          prioridad: ordenData.prioridad || 'Media',
+          equipo_nombre: ordenData.equipo_nombre || 'Equipo desconocido',
+          equipo_codigo: ordenData.equipo_codigo || 'N/A',
+          tecnico_nombre: ordenData.tecnico_nombre || 'Sin asignar',
+          estado_nombre: ordenData.estado_nombre || 'Pendiente',
+          fechareportefalla: ordenData.fechareportefalla || new Date().toISOString().split('T')[0],
+          tipo_mantenimiento_nombre: ordenData.tipo_mantenimiento_nombre || 'N/A',
+          ubicacion: ordenData.ubicacion || 'Sin ubicación',
+          duracion_estimada: ordenData.duracion_estimada || 'No especificada',
+          duracion_real: ordenData.duracion_real,
+          hora_inicio: ordenData.hora_inicio,
+          hora_fin: ordenData.hora_fin
+        };
+        
+        setOrden(mappedOrden);
+        
+        // Por ahora, las actividades se manejan como array vacío
+        // hasta que el backend tenga un endpoint para actividades de OT
+        const mockActividades: Actividad[] = [];
+        setActividades(mockActividades);
+        
+        // Calcular estadísticas
+        const calculatedStats: ExecutionStats = {
+          totalActivities: mockActividades.length,
+          completedActivities: mockActividades.filter(a => a.status === 'completada').length,
+          inProgressActivities: mockActividades.filter(a => a.status === 'en_progreso').length,
+          pendingActivities: mockActividades.filter(a => a.status === 'pendiente').length,
+          totalTime: mappedOrden.duracion_estimada || '0 horas',
+          actualTime: mappedOrden.duracion_real
+        };
+        
+        setStats(calculatedStats);
+        
+      } catch (err: any) {
         console.error("Error fetching work order data:", err);
-        setError("No se pudo cargar la información de la orden de trabajo.");
+        setError(err.response?.data?.detail || "No se pudo cargar la información de la orden de trabajo.");
       } finally {
         setLoading(false);
       }
@@ -337,8 +319,8 @@ const EjecucionOTView: React.FC = () => {
   return (
     <PageLayout>
       <PageHeader 
-        title={`Ejecución OT: ${orden.title}`}
-        subtitle={`Orden de trabajo ${orden.id} - ${orden.equipment}`}
+        title={`Ejecución OT: ${orden.numeroot}`}
+        subtitle={`Orden de trabajo ${orden.numeroot} - ${orden.equipo_nombre}`}
       >
         <div className="flex gap-2">
           <Button 
@@ -385,8 +367,8 @@ const EjecucionOTView: React.FC = () => {
                 </CardDescription>
               </div>
               <div className="flex gap-2">
-                {getMaintenanceTypeBadge(orden.type)}
-                {getPriorityBadge(orden.priority)}
+                {getMaintenanceTypeBadge(orden.tipo_mantenimiento_nombre || '')}
+                {getPriorityBadge(orden.prioridad)}
               </div>
             </div>
           </CardHeader>
@@ -396,55 +378,55 @@ const EjecucionOTView: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <Wrench className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm font-medium">Equipo:</span>
-                  <span className="text-sm">{orden.equipment} ({orden.equipmentCode})</span>
+                  <span className="text-sm">{orden.equipo_nombre} ({orden.equipo_codigo})</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <User className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm font-medium">Técnico:</span>
-                  <span className="text-sm">{orden.assignedTo}</span>
+                  <span className="text-sm">{orden.tecnico_nombre}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Calendar className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm font-medium">Fecha programada:</span>
-                  <span className="text-sm">{orden.scheduledDate}</span>
+                  <span className="text-sm">{new Date(orden.fechareportefalla).toLocaleDateString()}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <MapPin className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm font-medium">Ubicación:</span>
-                  <span className="text-sm">{orden.location}</span>
+                  <span className="text-sm">{orden.ubicacion || 'Sin ubicación'}</span>
                 </div>
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <Clock className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm font-medium">Duración estimada:</span>
-                  <span className="text-sm">{orden.estimatedDuration}</span>
+                  <span className="text-sm">{orden.duracion_estimada || 'No especificada'}</span>
                 </div>
-                {orden.actualDuration && (
+                {orden.duracion_real && (
                   <div className="flex items-center gap-2">
                     <Clock className="h-4 w-4 text-green-600" />
                     <span className="text-sm font-medium">Duración real:</span>
-                    <span className="text-sm text-green-600">{orden.actualDuration}</span>
+                    <span className="text-sm text-green-600">{orden.duracion_real}</span>
                   </div>
                 )}
-                {orden.startTime && (
+                {orden.hora_inicio && (
                   <div className="flex items-center gap-2">
                     <Play className="h-4 w-4 text-blue-600" />
                     <span className="text-sm font-medium">Inicio:</span>
-                    <span className="text-sm text-blue-600">{orden.startTime}</span>
+                    <span className="text-sm text-blue-600">{orden.hora_inicio}</span>
                   </div>
                 )}
-                {orden.endTime && (
+                {orden.hora_fin && (
                   <div className="flex items-center gap-2">
                     <Square className="h-4 w-4 text-green-600" />
                     <span className="text-sm font-medium">Fin:</span>
-                    <span className="text-sm text-green-600">{orden.endTime}</span>
+                    <span className="text-sm text-green-600">{orden.hora_fin}</span>
                   </div>
                 )}
               </div>
             </div>
             <div className="mt-4">
-              <p className="text-sm text-muted-foreground">{orden.description}</p>
+              <p className="text-sm text-muted-foreground">{orden.descripcionproblemareportado}</p>
             </div>
           </CardContent>
         </Card>
@@ -515,8 +497,18 @@ const EjecucionOTView: React.FC = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {actividades.map(actividad => (
+            {actividades.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <FileText className="mx-auto h-12 w-12 text-muted-foreground/50" />
+                <h3 className="mt-2 text-sm font-medium">No hay actividades registradas</h3>
+                <p className="mt-1 text-sm">Esta orden de trabajo aún no tiene actividades asignadas.</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  El módulo de actividades de OT estará disponible próximamente.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {actividades.map(actividad => (
                 <div key={actividad.id} className="border rounded-lg p-4 hover:bg-muted/50">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
@@ -649,7 +641,8 @@ const EjecucionOTView: React.FC = () => {
                   </div>
                 </div>
               ))}
-            </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </ContentGrid>

@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import CreateWorkOrderForm from '@/components/forms/CreateWorkOrderForm';
+import EventDetailModal from '@/components/modals/EventDetailModal';
 import { ordenesTrabajoServiceReal } from '@/services/apiServiceReal';
 
 // =================================================================================
@@ -58,6 +59,8 @@ const CalendarView: React.FC = () => {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [stats, setStats] = useState<CalendarStats | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
+  const [showEventDetail, setShowEventDetail] = useState(false);
 
   // Datos de ejemplo para el diseño
   const mockEvents: CalendarEvent[] = [
@@ -136,40 +139,75 @@ const CalendarView: React.FC = () => {
 
   const fetchCalendarData = async () => {
     try {
-      // Cargar agendas desde el backend
-      const response = await fetch('http://localhost:8000/api/v2/agendas/');
-      const data = await response.json();
-      const agendas = data.results || data || [];
+      // Cargar órdenes de trabajo desde el backend (que son los eventos del calendario)
+      const response = await ordenesTrabajoServiceReal.getAll({ limit: 100 });
+      const ordenes = response.results || response.data || response || [];
       
-      const eventosTransformados = agendas.map((agenda: any) => ({
-        id: agenda.idagenda?.toString(),
-        title: agenda.descripcion || 'Evento',
-        date: agenda.fechaprogramada || new Date().toISOString().split('T')[0],
-        time: agenda.horaprogramada || '00:00',
-        type: 'preventivo',
-        equipment: agenda.equipo_nombre || 'Sin equipo',
-        technician: agenda.tecnico_nombre || 'Sin asignar',
-        status: agenda.completado ? 'completado' : 'programado',
-        priority: 'media',
-        description: agenda.observaciones || ''
-      }));
+      const eventosTransformados = ordenes.map((orden: any) => {
+        // Determinar el tipo basado en el tipo de mantenimiento
+        let tipo: 'preventivo' | 'correctivo' | 'predictivo' | 'inspeccion' = 'preventivo';
+        const tipoMant = orden.tipo_mantenimiento_nombre?.toLowerCase() || '';
+        if (tipoMant.includes('correctivo')) tipo = 'correctivo';
+        else if (tipoMant.includes('predictivo')) tipo = 'predictivo';
+        else if (tipoMant.includes('inspeccion') || tipoMant.includes('inspección')) tipo = 'inspeccion';
+        
+        // Determinar el estado
+        let estado: 'programado' | 'en_progreso' | 'completado' | 'cancelado' = 'programado';
+        const estadoOT = orden.estado_nombre?.toLowerCase() || '';
+        if (estadoOT.includes('progreso') || estadoOT.includes('asignada')) estado = 'en_progreso';
+        else if (estadoOT.includes('completada') || estadoOT.includes('cerrada')) estado = 'completado';
+        else if (estadoOT.includes('cancelada')) estado = 'cancelado';
+        
+        // Determinar prioridad
+        let prioridad: 'baja' | 'media' | 'alta' | 'urgente' = 'media';
+        const prioridadOT = orden.prioridad?.toLowerCase() || '';
+        if (prioridadOT === 'baja') prioridad = 'baja';
+        else if (prioridadOT === 'alta') prioridad = 'alta';
+        else if (prioridadOT === 'urgente' || prioridadOT === 'crítica') prioridad = 'urgente';
+        
+        // Obtener la fecha correcta (puede venir en diferentes formatos)
+        let fechaEvento = orden.fechaejecucion || orden.fechaprogramada || orden.fechareportefalla || new Date().toISOString();
+        // Asegurar que esté en formato YYYY-MM-DD
+        if (fechaEvento.includes('T')) {
+          fechaEvento = fechaEvento.split('T')[0];
+        }
+        
+        return {
+          id: orden.idordentrabajo?.toString() || orden.id?.toString(),
+          title: `${orden.numeroot || 'OT'} - ${orden.equipo_nombre || 'Sin equipo'}`,
+          date: fechaEvento,
+          time: '08:00',
+          type: tipo,
+          equipment: orden.equipo_nombre || 'Sin equipo',
+          technician: orden.tecnico_nombre || 'Sin asignar',
+          status: estado,
+          priority: prioridad,
+          description: orden.descripcionproblemareportado || orden.descripcion || ''
+        };
+      });
       
       setEvents(eventosTransformados);
+      
+      // Calcular estadísticas
+      const today = new Date();
+      const weekFromNow = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+      
       setStats({
         totalEventos: eventosTransformados.length,
         estaSemana: eventosTransformados.filter((e: any) => {
           const eventDate = new Date(e.date);
-          const today = new Date();
-          const weekFromNow = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
           return eventDate >= today && eventDate <= weekFromNow;
         }).length,
-        vencidos: 0,
+        vencidos: eventosTransformados.filter((e: any) => {
+          const eventDate = new Date(e.date);
+          return eventDate < today && e.status !== 'completado';
+        }).length,
         completados: eventosTransformados.filter((e: any) => e.status === 'completado').length
       });
       
-      console.log('✅ Calendario cargado:', eventosTransformados.length);
+      console.log('✅ Calendario cargado:', eventosTransformados.length, 'eventos');
     } catch (err) {
-      console.warn('⚠️ API de calendario no disponible, mostrando vacío');
+      console.error('❌ Error al cargar calendario:', err);
       setEvents([]);
       setStats({ totalEventos: 0, estaSemana: 0, vencidos: 0, completados: 0 });
     }
@@ -246,6 +284,28 @@ const CalendarView: React.FC = () => {
     const today = new Date();
     setSelectedMonth(today.getMonth());
     setSelectedYear(today.getFullYear());
+  };
+
+  // Manejar click en evento
+  const handleEventClick = (event: CalendarEvent) => {
+    setSelectedEvent(event);
+    setShowEventDetail(true);
+  };
+
+  // Manejar edición de evento
+  const handleEditEvent = (event: CalendarEvent) => {
+    setShowEventDetail(false);
+    // TODO: Abrir formulario de edición con los datos del evento
+    console.log('Editar evento:', event);
+  };
+
+  // Manejar eliminación de evento
+  const handleDeleteEvent = (event: CalendarEvent) => {
+    if (confirm(`¿Estás seguro de que deseas cancelar el evento "${event.title}"?`)) {
+      setShowEventDetail(false);
+      // TODO: Implementar cancelación de evento
+      console.log('Cancelar evento:', event);
+    }
   };
 
   // Obtener badge de tipo
@@ -462,17 +522,26 @@ const CalendarView: React.FC = () => {
                       {day.getDate()}
                     </div>
                     <div className="space-y-1">
-                      {dayEvents.slice(0, 2).map(event => (
-                        <div
-                          key={event.id}
-                          className="text-xs p-1 rounded bg-primary/10 text-primary truncate cursor-pointer hover:bg-primary/20"
-                          title={event.title}
-                        >
-                          {event.time} - {event.title}
-                        </div>
-                      ))}
+                      {dayEvents.slice(0, 2).map(event => {
+                        // Determinar color según tipo
+                        let bgColor = 'bg-blue-100 text-blue-800 hover:bg-blue-200';
+                        if (event.type === 'correctivo') bgColor = 'bg-orange-100 text-orange-800 hover:bg-orange-200';
+                        else if (event.type === 'predictivo') bgColor = 'bg-green-100 text-green-800 hover:bg-green-200';
+                        else if (event.type === 'inspeccion') bgColor = 'bg-purple-100 text-purple-800 hover:bg-purple-200';
+                        
+                        return (
+                          <div
+                            key={event.id}
+                            onClick={() => handleEventClick(event)}
+                            className={`text-xs p-1 rounded ${bgColor} truncate cursor-pointer transition-all transform hover:scale-105`}
+                            title={`Click para ver detalles\n${event.time} - ${event.title}\n${event.equipment}\nPrioridad: ${event.priority}`}
+                          >
+                            <div className="font-medium truncate">{event.title}</div>
+                          </div>
+                        );
+                      })}
                       {dayEvents.length > 2 && (
-                        <div className="text-xs text-muted-foreground">
+                        <div className="text-xs text-muted-foreground font-medium">
                           +{dayEvents.length - 2} más
                         </div>
                       )}
@@ -495,7 +564,7 @@ const CalendarView: React.FC = () => {
           <CardContent>
             <div className="space-y-4">
               {filteredEvents.map(event => (
-                <div key={event.id} className="border rounded-lg p-4 hover:bg-muted/50">
+                <div key={event.id} className="border rounded-lg p-4 hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => handleEventClick(event)}>
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
@@ -522,14 +591,14 @@ const CalendarView: React.FC = () => {
                         )}
                       </div>
                     </div>
-                    <div className="flex gap-1 ml-4">
-                      <Button variant="outline" size="sm">
+                    <div className="flex gap-1 ml-4" onClick={(e) => e.stopPropagation()}>
+                      <Button variant="outline" size="sm" onClick={() => handleEventClick(event)} title="Ver detalles">
                         <Eye className="h-3 w-3" />
                       </Button>
-                      <Button variant="outline" size="sm">
+                      <Button variant="outline" size="sm" onClick={() => handleEditEvent(event)} title="Editar">
                         <Edit className="h-3 w-3" />
                       </Button>
-                      <Button variant="outline" size="sm">
+                      <Button variant="outline" size="sm" onClick={() => handleDeleteEvent(event)} title="Cancelar">
                         <Trash2 className="h-3 w-3" />
                       </Button>
                     </div>
@@ -555,7 +624,20 @@ const CalendarView: React.FC = () => {
         onClose={() => setShowCreateForm(false)}
         onSuccess={() => {
           console.log('Evento/Orden de trabajo creado exitosamente');
+          fetchCalendarData();
         }}
+      />
+
+      {/* Modal de detalles del evento */}
+      <EventDetailModal
+        isOpen={showEventDetail}
+        onClose={() => {
+          setShowEventDetail(false);
+          setSelectedEvent(null);
+        }}
+        event={selectedEvent}
+        onEdit={handleEditEvent}
+        onDelete={handleDeleteEvent}
       />
     </PageLayout>
     );

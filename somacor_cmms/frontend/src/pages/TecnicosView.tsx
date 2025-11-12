@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Plus, 
   Users, 
@@ -17,7 +18,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import CreateTecnicoForm from '@/components/forms/CreateTecnicoForm';
-import { tecnicosService } from '@/services/tecnicosService';
+import apiClient from '@/api/apiClient';
 
 interface Technician {
   id: string;
@@ -31,6 +32,7 @@ interface Technician {
 }
 
 const TecnicosView: React.FC = () => {
+  const navigate = useNavigate();
   const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -40,46 +42,13 @@ const TecnicosView: React.FC = () => {
   const [showEditForm, setShowEditForm] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
-  // Datos de ejemplo para el diseño
-  const mockStats = {
-    total: 3,
-    available: 1,
-    busy: 2,
-    offline: 0
+  // Calcular estadísticas dinámicamente
+  const stats = {
+    total: technicians.length,
+    available: technicians.filter(t => t.status === 'available').length,
+    busy: technicians.filter(t => t.status === 'busy').length,
+    offline: technicians.filter(t => t.status === 'offline').length
   };
-
-  const mockTechnicians: Technician[] = [
-    {
-      id: "1",
-      name: "Juan Pérez",
-      email: "juan.perez@somacor.com",
-      phone: "+56 9 1234 5678",
-      status: "busy",
-      activeOrders: 2,
-      specialties: ["Compresores", "Sistemas Neumáticos", "Mantenimiento Preventivo"],
-      avatar: "JP"
-    },
-    {
-      id: "2",
-      name: "María García",
-      email: "maria.garcia@somacor.com",
-      phone: "+56 9 2345 6789",
-      status: "busy",
-      activeOrders: 1,
-      specialties: ["Bombas Centrífugas", "Sistemas Hidráulicos"],
-      avatar: "MG"
-    },
-    {
-      id: "3",
-      name: "Carlos López",
-      email: "carlos.lopez@somacor.com",
-      phone: "+56 9 3456 7890",
-      status: "available",
-      activeOrders: 0,
-      specialties: ["Motores Eléctricos", "Sistemas Eléctricos", "Automatización"],
-      avatar: "CL"
-    }
-  ];
 
   useEffect(() => {
     fetchTechnicians();
@@ -90,26 +59,28 @@ const TecnicosView: React.FC = () => {
       setLoading(true);
       setError('');
       
-      const response = await tecnicosService.getAll();
-      const tecnicos = response.results || response || [];
+      // Cargar técnicos desde el backend
+      const response = await apiClient.get('/v2/tecnicos/');
+      const tecnicos = response.data.results || response.data || [];
       
-      const tecnicosTransformados = tecnicos.map((tec: any) => ({
-        id: tec.user?.id?.toString() || tec.id?.toString(),
-        name: tec.user?.get_full_name || tec.user?.username || tec.nombre || 'Sin nombre',
-        email: tec.user?.email || tec.email || 'Sin email',
-        phone: tec.telefono || tec.phone || 'Sin teléfono',
-        status: tec.disponible ? 'available' : 'busy',
+      // Mapear datos del backend al formato del componente
+      const tecnicosTransformados: Technician[] = tecnicos.map((tec: any) => ({
+        id: tec.idtecnico?.toString() || tec.usuario?.toString(),
+        name: tec.nombre_completo || `${tec.first_name || ''} ${tec.last_name || ''}`.trim() || tec.username || 'Sin nombre',
+        email: tec.email || tec.email_usuario || 'Sin email',
+        phone: tec.telefono || 'Sin teléfono',
+        status: tec.estado === 'disponible' ? 'available' : tec.estado === 'ocupado' ? 'busy' : 'offline',
         activeOrders: tec.ordenes_activas || 0,
-        specialties: tec.especialidades || [],
-        avatar: (tec.user?.first_name?.[0] || '') + (tec.user?.last_name?.[0] || '') || 'T'
+        specialties: tec.especialidades_list || [],
+        avatar: ((tec.first_name?.[0] || '') + (tec.last_name?.[0] || '')).toUpperCase() || 'T'
       }));
       
       setTechnicians(tecnicosTransformados);
-      console.log('✅ Técnicos cargados:', tecnicosTransformados.length);
-    } catch (err) {
+      console.log('✅ Técnicos cargados desde backend:', tecnicosTransformados.length);
+    } catch (err: any) {
       console.error("❌ Error fetching technicians:", err);
-      setTechnicians([]);
       setError("No se pudo cargar la información de técnicos.");
+      setTechnicians([]);
     } finally {
       setLoading(false);
     }
@@ -186,16 +157,15 @@ const TecnicosView: React.FC = () => {
   };
 
   const tabs = [
-    { id: 'all', label: `Todos (${mockStats.total})` },
-    { id: 'available', label: `Disponibles (${mockStats.available})` },
-    { id: 'busy', label: `Ocupados (${mockStats.busy})` },
-    { id: 'offline', label: `Fuera de Servicio (${mockStats.offline})` }
+    { id: 'all', label: `Todos (${stats.total})` },
+    { id: 'available', label: `Disponibles (${stats.available})` },
+    { id: 'busy', label: `Ocupados (${stats.busy})` },
+    { id: 'offline', label: `Fuera de Servicio (${stats.offline})` }
   ];
 
   // Handlers para acciones
   const handleViewProfile = (technician: Technician) => {
-    setSelectedTechnician(technician);
-    console.log('Ver perfil de:', technician.name);
+    navigate(`/tecnicos/${technician.id}`);
   };
 
   if (loading) {
@@ -238,7 +208,7 @@ const TecnicosView: React.FC = () => {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{mockStats.total}</div>
+            <div className="text-2xl font-bold">{stats.total}</div>
             <p className="text-xs text-muted-foreground">
               Personal registrado
             </p>
@@ -251,7 +221,7 @@ const TecnicosView: React.FC = () => {
             <UserCheck className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{mockStats.available}</div>
+            <div className="text-2xl font-bold text-green-600">{stats.available}</div>
             <p className="text-xs text-muted-foreground">
               Listos para asignar
             </p>
@@ -264,7 +234,7 @@ const TecnicosView: React.FC = () => {
             <Briefcase className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">{mockStats.busy}</div>
+            <div className="text-2xl font-bold text-red-600">{stats.busy}</div>
             <p className="text-xs text-muted-foreground">
               En trabajo activo
             </p>
@@ -277,7 +247,7 @@ const TecnicosView: React.FC = () => {
             <Wrench className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{mockStats.total}</div>
+            <div className="text-2xl font-bold">{technicians.reduce((sum, t) => sum + t.activeOrders, 0)}</div>
             <p className="text-xs text-muted-foreground">
               Órdenes en progreso
             </p>

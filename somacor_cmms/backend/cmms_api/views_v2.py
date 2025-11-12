@@ -4,6 +4,7 @@ Views V2 - Versión optimizada y moderna para CMMS
 from rest_framework import viewsets, filters, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Count, Q, Avg, Sum, F, Case, When, IntegerField
 from django.utils import timezone
@@ -639,24 +640,7 @@ class ChecklistInstanceViewSet(viewsets.ModelViewSet):
             return Response({'error': 'Error obteniendo estadísticas'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-class InventarioViewSet(viewsets.ModelViewSet):
-    """ViewSet para gestión de inventario (placeholder - requiere modelo)"""
-    permission_classes = [permissions.AllowAny]
-    
-    def get_queryset(self):
-        # Este ViewSet requiere un modelo de Inventario que no existe actualmente
-        # Por ahora retornamos una lista vacía
-        return []
-    
-    def list(self, request):
-        """Lista de items de inventario"""
-        # Placeholder - requiere implementación del modelo Inventario
-        return Response({'results': []})
-    
-    def create(self, request):
-        """Crear item de inventario"""
-        # Placeholder - requiere implementación del modelo Inventario
-        return Response({'message': 'Inventario no implementado aún'}, status=status.HTTP_501_NOT_IMPLEMENTED)
+# InventarioViewSet movido al final del archivo con implementación completa
     
     @action(detail=False, methods=['get'])
     def stats(self, request):
@@ -1027,3 +1011,718 @@ class DashboardViewSet(viewsets.ViewSet):
 # - /api/v2/dashboard/maintenance_types/
 # - /api/v2/dashboard/recent_work_orders/
 # =============================================================================
+
+
+
+# =============================================================================
+# VIEWSETS DE TÉCNICOS
+# =============================================================================
+
+class EspecialidadesViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para gestionar especialidades técnicas
+    """
+    queryset = Especialidades.objects.filter(activa=True)
+    serializer_class = EspecialidadesSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        
+        # Filtrar por activas/inactivas
+        activa = self.request.query_params.get('activa', None)
+        if activa is not None:
+            queryset = queryset.filter(activa=activa.lower() == 'true')
+        
+        return queryset.order_by('nombreespecialidad')
+
+
+class TecnicosViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para gestionar técnicos del sistema
+    
+    Endpoints:
+    - GET /api/v2/tecnicos/ - Listar todos los técnicos
+    - GET /api/v2/tecnicos/{id}/ - Obtener detalle de un técnico
+    - POST /api/v2/tecnicos/ - Crear nuevo técnico
+    - PUT /api/v2/tecnicos/{id}/ - Actualizar técnico completo
+    - PATCH /api/v2/tecnicos/{id}/ - Actualizar técnico parcial
+    - DELETE /api/v2/tecnicos/{id}/ - Eliminar técnico
+    - GET /api/v2/tecnicos/disponibles/ - Listar técnicos disponibles
+    - PATCH /api/v2/tecnicos/{id}/cambiar_estado/ - Cambiar estado del técnico
+    """
+    queryset = Tecnicos.objects.select_related('usuario').prefetch_related('especialidades').filter(activo=True)
+    permission_classes = [IsAuthenticated]
+    
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return TecnicosListSerializer
+        elif self.action == 'retrieve':
+            return TecnicosDetailSerializer
+        else:
+            return TecnicosCreateUpdateSerializer
+    
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        
+        # Filtrar por estado
+        estado = self.request.query_params.get('estado', None)
+        if estado:
+            queryset = queryset.filter(estado=estado)
+        
+        # Filtrar por especialidad
+        especialidad = self.request.query_params.get('especialidad', None)
+        if especialidad:
+            queryset = queryset.filter(especialidades__idespecialidad=especialidad)
+        
+        # Filtrar por activos/inactivos
+        activo = self.request.query_params.get('activo', None)
+        if activo is not None:
+            queryset = queryset.filter(activo=activo.lower() == 'true')
+        
+        # Búsqueda por nombre
+        search = self.request.query_params.get('search', None)
+        if search:
+            queryset = queryset.filter(
+                models.Q(usuario__first_name__icontains=search) |
+                models.Q(usuario__last_name__icontains=search) |
+                models.Q(usuario__username__icontains=search) |
+                models.Q(cargo__icontains=search)
+            )
+        
+        return queryset.order_by('usuario__first_name', 'usuario__last_name')
+    
+    @action(detail=False, methods=['get'])
+    def disponibles(self, request):
+        """
+        Endpoint para obtener solo técnicos disponibles
+        GET /api/v2/tecnicos/disponibles/
+        """
+        tecnicos = self.get_queryset().filter(estado='disponible')
+        serializer = self.get_serializer(tecnicos, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=True, methods=['patch'])
+    def cambiar_estado(self, request, pk=None):
+        """
+        Endpoint para cambiar el estado de un técnico
+        PATCH /api/v2/tecnicos/{id}/cambiar_estado/
+        Body: {"estado": "disponible|ocupado|no_disponible"}
+        """
+        tecnico = self.get_object()
+        nuevo_estado = request.data.get('estado')
+        
+        if nuevo_estado not in ['disponible', 'ocupado', 'no_disponible']:
+            return Response(
+                {'error': 'Estado inválido. Debe ser: disponible, ocupado o no_disponible'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        tecnico.estado = nuevo_estado
+        tecnico.save()
+        
+        serializer = self.get_serializer(tecnico)
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['get'])
+    def estadisticas(self, request):
+        """
+        Endpoint para obtener estadísticas de técnicos
+        GET /api/v2/tecnicos/estadisticas/
+        """
+        total = self.get_queryset().count()
+        disponibles = self.get_queryset().filter(estado='disponible').count()
+        ocupados = self.get_queryset().filter(estado='ocupado').count()
+        no_disponibles = self.get_queryset().filter(estado='no_disponible').count()
+        
+        # Calcular total de órdenes activas
+        from django.db.models import Q, Count
+        ordenes_activas = OrdenesTrabajo.objects.filter(
+            Q(idestadoot__nombreestadoot='Abierta') |
+            Q(idestadoot__nombreestadoot='En Progreso') |
+            Q(idestadoot__nombreestadoot='Asignada')
+        ).count()
+        
+        return Response({
+            'total': total,
+            'disponibles': disponibles,
+            'ocupados': ocupados,
+            'no_disponibles': no_disponibles,
+            'ordenes_activas_total': ordenes_activas
+        })
+
+
+
+# =============================================================================
+# VIEWSETS ADICIONALES - GESTIÓN DE CATÁLOGOS
+# =============================================================================
+
+class EstadosEquipoViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para gestionar estados de equipos
+    """
+    queryset = EstadosEquipo.objects.all()
+    serializer_class = EstadosEquipoSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        return self.queryset.order_by('nombreestado')
+
+
+class EstadosOrdenTrabajoViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para gestionar estados de órdenes de trabajo
+    """
+    queryset = EstadosOrdenTrabajo.objects.all()
+    serializer_class = EstadosOrdenTrabajoSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        return self.queryset.order_by('nombreestadoot')
+
+
+class TiposMantenimientoOTViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para gestionar tipos de mantenimiento de OT
+    """
+    queryset = TiposMantenimientoOT.objects.all()
+    serializer_class = TiposMantenimientoOTSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        return self.queryset.order_by('nombretipomantenimientoot')
+
+
+class TiposTareaViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para gestionar tipos de tarea
+    """
+    queryset = TiposTarea.objects.all()
+    serializer_class = TipoTareaSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        return self.queryset.order_by('nombretipotarea')
+
+
+class TareasEstandarViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para gestionar tareas estándar
+    """
+    queryset = TareasEstandar.objects.select_related('idtipotarea').all()
+    serializer_class = TareasEstandarSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
+    filterset_fields = ['idtipotarea']
+    search_fields = ['nombretarea', 'descripciontarea']
+    
+    def get_queryset(self):
+        return self.queryset.order_by('nombretarea')
+
+
+# =============================================================================
+# VIEWSETS DE PLANES DE MANTENIMIENTO
+# =============================================================================
+
+class PlanesMantenimientoViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para gestionar planes de mantenimiento
+    """
+    queryset = PlanesMantenimiento.objects.all()
+    serializer_class = PlanesMantenimientoSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
+    search_fields = ['nombreplan', 'descripcionplan']
+    
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        
+        # Filtrar por equipo si se proporciona
+        equipo_id = self.request.query_params.get('equipo', None)
+        if equipo_id:
+            queryset = queryset.filter(idequipo_id=equipo_id)
+        
+        return queryset.order_by('nombreplan')
+    
+    @action(detail=True, methods=['get'])
+    def detalles(self, request, pk=None):
+        """
+        Obtener detalles del plan con sus tareas
+        """
+        plan = self.get_object()
+        detalles = DetallesPlanMantenimiento.objects.filter(
+            idplanmantenimiento=plan
+        ).select_related('idtareaestandar')
+        
+        serializer = DetallesPlanMantenimientoSerializer(detalles, many=True)
+        return Response(serializer.data)
+
+
+class DetallesPlanMantenimientoViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para gestionar detalles de planes de mantenimiento
+    """
+    queryset = DetallesPlanMantenimiento.objects.select_related(
+        'idplanmantenimiento', 'idtareaestandar'
+    ).all()
+    serializer_class = DetallesPlanMantenimientoSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['idplanmantenimiento']
+    
+    def get_queryset(self):
+        return self.queryset.order_by('iddetalleplan')
+
+
+# =============================================================================
+# VIEWSETS DE ACTIVIDADES Y EVIDENCIAS
+# =============================================================================
+
+class ActividadesOrdenTrabajoViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para gestionar actividades de órdenes de trabajo
+    """
+    queryset = ActividadesOrdenTrabajo.objects.select_related(
+        'idordentrabajo', 'idtareaestandar', 'idtecnicoejecutor'
+    ).all()
+    serializer_class = ActividadesOrdenTrabajoSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
+    filterset_fields = ['idordentrabajo', 'idtecnicoejecutor', 'completada']
+    search_fields = ['observacionesactividad']
+    
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        
+        # Filtrar por orden de trabajo
+        orden_id = self.request.query_params.get('orden', None)
+        if orden_id:
+            queryset = queryset.filter(idordentrabajo_id=orden_id)
+        
+        # Filtrar por técnico
+        tecnico_id = self.request.query_params.get('tecnico', None)
+        if tecnico_id:
+            queryset = queryset.filter(idtecnicoejecutor_id=tecnico_id)
+        
+        # Filtrar por estado completada
+        completada = self.request.query_params.get('completada', None)
+        if completada is not None:
+            queryset = queryset.filter(completada=completada.lower() == 'true')
+        
+        return queryset.order_by('-fechainicioactividad')
+    
+    @action(detail=False, methods=['get'])
+    def por_orden(self, request):
+        """
+        Obtener actividades de una orden específica
+        """
+        orden_id = request.query_params.get('orden_id')
+        if not orden_id:
+            return Response(
+                {'error': 'Se requiere el parámetro orden_id'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        actividades = self.get_queryset().filter(idordentrabajo_id=orden_id)
+        serializer = self.get_serializer(actividades, many=True)
+        return Response(serializer.data)
+
+
+class EvidenciaOTViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para gestionar evidencias de órdenes de trabajo
+    """
+    queryset = EvidenciaOT.objects.select_related(
+        'idordentrabajo'
+    ).all()
+    serializer_class = EvidenciaOTSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['idordentrabajo']
+    
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        
+        # Filtrar por orden de trabajo
+        orden_id = self.request.query_params.get('orden', None)
+        if orden_id:
+            queryset = queryset.filter(idordentrabajo_id=orden_id)
+        
+        return queryset.order_by('-fecha_subida')
+
+
+# =============================================================================
+# VIEWSETS DE AGENDAS
+# =============================================================================
+
+class AgendasViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para gestionar agendas de mantenimiento
+    """
+    queryset = Agendas.objects.select_related(
+        'idplanmantenimiento', 'idequipo', 'idusuarioasignado'
+    ).all()
+    serializer_class = AgendaSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
+    filterset_fields = ['idequipo', 'idusuarioasignado', 'tipoevento']
+    search_fields = ['tituloevento', 'descripcionevento']
+    
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        
+        # Filtrar por equipo
+        equipo_id = self.request.query_params.get('equipo', None)
+        if equipo_id:
+            queryset = queryset.filter(idequipo_id=equipo_id)
+        
+        # Filtrar por usuario asignado
+        usuario_id = self.request.query_params.get('usuario', None)
+        if usuario_id:
+            queryset = queryset.filter(idusuarioasignado_id=usuario_id)
+        
+        # Filtrar por tipo de evento
+        tipo_evento = self.request.query_params.get('tipo', None)
+        if tipo_evento:
+            queryset = queryset.filter(tipoevento=tipo_evento)
+        
+        # Filtrar por rango de fechas
+        fecha_desde = self.request.query_params.get('fecha_desde', None)
+        fecha_hasta = self.request.query_params.get('fecha_hasta', None)
+        
+        if fecha_desde:
+            queryset = queryset.filter(fechahorainicio__gte=fecha_desde)
+        if fecha_hasta:
+            queryset = queryset.filter(fechahorainicio__lte=fecha_hasta)
+        
+        return queryset.order_by('fechahorainicio')
+    
+    @action(detail=False, methods=['get'])
+    def proximas(self, request):
+        """
+        Obtener agendas próximas (próximos 7 días)
+        """
+        from datetime import date, timedelta
+        
+        hoy = date.today()
+        fecha_limite = hoy + timedelta(days=7)
+        
+        agendas = self.get_queryset().filter(
+            fechaprogramada__gte=hoy,
+            fechaprogramada__lte=fecha_limite,
+            estado='Pendiente'
+        )
+        
+        serializer = self.get_serializer(agendas, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['get'])
+    def vencidas(self, request):
+        """
+        Obtener agendas vencidas
+        """
+        from datetime import date
+        
+        hoy = date.today()
+        agendas = self.get_queryset().filter(
+            fechaprogramada__lt=hoy,
+            estado='Pendiente'
+        )
+        
+        serializer = self.get_serializer(agendas, many=True)
+        return Response(serializer.data)
+
+
+
+# =============================================================================
+# VIEWSETS DE INVENTARIO
+# =============================================================================
+
+class CategoriasInventarioViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para gestionar categorías de inventario
+    """
+    queryset = CategoriasInventario.objects.filter(activa=True)
+    serializer_class = CategoriasInventarioSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
+    search_fields = ['nombrecategoria', 'descripcion']
+    
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        
+        # Filtrar por activas/inactivas
+        activa = self.request.query_params.get('activa', None)
+        if activa is not None:
+            queryset = queryset.filter(activa=activa.lower() == 'true')
+        
+        return queryset.order_by('nombrecategoria')
+
+
+class ProveedoresViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para gestionar proveedores
+    """
+    queryset = Proveedores.objects.filter(activo=True)
+    serializer_class = ProveedoresSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
+    search_fields = ['nombreproveedor', 'rut', 'contacto', 'email']
+    
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        
+        # Filtrar por activos/inactivos
+        activo = self.request.query_params.get('activo', None)
+        if activo is not None:
+            queryset = queryset.filter(activo=activo.lower() == 'true')
+        
+        return queryset.order_by('nombreproveedor')
+
+
+class InventarioViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para gestionar items de inventario
+    
+    Endpoints:
+    - GET /api/v2/inventario/ - Listar todos los items
+    - GET /api/v2/inventario/{id}/ - Obtener detalle de un item
+    - POST /api/v2/inventario/ - Crear nuevo item
+    - PUT /api/v2/inventario/{id}/ - Actualizar item completo
+    - PATCH /api/v2/inventario/{id}/ - Actualizar item parcial
+    - DELETE /api/v2/inventario/{id}/ - Eliminar item
+    - GET /api/v2/inventario/stock_bajo/ - Items con stock bajo
+    - GET /api/v2/inventario/sin_stock/ - Items sin stock
+    - GET /api/v2/inventario/estadisticas/ - Estadísticas generales
+    - POST /api/v2/inventario/{id}/movimiento/ - Registrar movimiento
+    """
+    queryset = Inventario.objects.select_related(
+        'idcategoria', 'idproveedor', 'usuariocreacion'
+    ).filter(estado='activo')
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['idcategoria', 'idproveedor', 'estado', 'unidadmedida']
+    search_fields = ['codigointerno', 'codigobarras', 'nombreitem', 'descripcion']
+    ordering_fields = ['codigointerno', 'nombreitem', 'cantidad', 'costounitario', 'fechacreacion']
+    ordering = ['codigointerno']
+    
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return InventarioListSerializer
+        elif self.action == 'retrieve':
+            return InventarioDetailSerializer
+        else:
+            return InventarioCreateUpdateSerializer
+    
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        
+        # Filtrar por estado de stock
+        estado_stock = self.request.query_params.get('estado_stock', None)
+        if estado_stock == 'stock_bajo':
+            queryset = queryset.extra(
+                where=["cantidad <= stockminimo"]
+            )
+        elif estado_stock == 'sin_stock':
+            queryset = queryset.filter(cantidad=0)
+        elif estado_stock == 'stock_alto':
+            queryset = queryset.extra(
+                where=["stockmaximo IS NOT NULL AND cantidad >= stockmaximo"]
+            )
+        
+        # Filtrar por rango de cantidad
+        cantidad_min = self.request.query_params.get('cantidad_min', None)
+        cantidad_max = self.request.query_params.get('cantidad_max', None)
+        if cantidad_min:
+            queryset = queryset.filter(cantidad__gte=cantidad_min)
+        if cantidad_max:
+            queryset = queryset.filter(cantidad__lte=cantidad_max)
+        
+        # Filtrar por rango de costo
+        costo_min = self.request.query_params.get('costo_min', None)
+        costo_max = self.request.query_params.get('costo_max', None)
+        if costo_min:
+            queryset = queryset.filter(costounitario__gte=costo_min)
+        if costo_max:
+            queryset = queryset.filter(costounitario__lte=costo_max)
+        
+        return queryset
+    
+    def perform_create(self, serializer):
+        """Asignar el usuario actual al crear item"""
+        serializer.save(usuariocreacion=self.request.user)
+    
+    @action(detail=False, methods=['get'])
+    def stock_bajo(self, request):
+        """
+        Endpoint para obtener items con stock bajo
+        GET /api/v2/inventario/stock_bajo/
+        """
+        items = self.get_queryset().extra(
+            where=["cantidad <= stockminimo AND cantidad > 0"]
+        )
+        serializer = self.get_serializer(items, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['get'])
+    def sin_stock(self, request):
+        """
+        Endpoint para obtener items sin stock
+        GET /api/v2/inventario/sin_stock/
+        """
+        items = self.get_queryset().filter(cantidad=0)
+        serializer = self.get_serializer(items, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['get'])
+    def estadisticas(self, request):
+        """
+        Endpoint para obtener estadísticas de inventario
+        GET /api/v2/inventario/estadisticas/
+        """
+        from django.db.models import Sum, Count, Q
+        
+        queryset = self.get_queryset()
+        
+        # Calcular estadísticas
+        total_items = queryset.count()
+        items_activos = queryset.filter(estado='activo').count()
+        items_stock_bajo = queryset.extra(
+            where=["cantidad <= stockminimo AND cantidad > 0"]
+        ).count()
+        items_sin_stock = queryset.filter(cantidad=0).count()
+        
+        # Calcular valor total del inventario
+        valor_total = 0
+        for item in queryset:
+            valor_total += item.valor_total
+        
+        # Contar categorías y proveedores
+        categorias_count = CategoriasInventario.objects.filter(activa=True).count()
+        proveedores_count = Proveedores.objects.filter(activo=True).count()
+        
+        stats = {
+            'total_items': total_items,
+            'items_activos': items_activos,
+            'items_stock_bajo': items_stock_bajo,
+            'items_sin_stock': items_sin_stock,
+            'valor_total_inventario': valor_total,
+            'categorias_count': categorias_count,
+            'proveedores_count': proveedores_count
+        }
+        
+        serializer = InventarioStatsSerializer(stats)
+        return Response(serializer.data)
+    
+    @action(detail=True, methods=['post'])
+    def movimiento(self, request, pk=None):
+        """
+        Endpoint para registrar un movimiento de inventario
+        POST /api/v2/inventario/{id}/movimiento/
+        Body: {
+            "tipomovimiento": "entrada|salida|ajuste_positivo|ajuste_negativo",
+            "cantidad": 10,
+            "motivo": "Compra de repuestos",
+            "observaciones": "Factura #12345",
+            "documento": "FAC-12345",
+            "idproveedor": 1
+        }
+        """
+        item = self.get_object()
+        
+        # Validar datos del movimiento
+        tipo_movimiento = request.data.get('tipomovimiento')
+        cantidad = request.data.get('cantidad', 0)
+        
+        if not tipo_movimiento:
+            return Response(
+                {'error': 'El tipo de movimiento es requerido'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            cantidad = float(cantidad)
+        except (ValueError, TypeError):
+            return Response(
+                {'error': 'La cantidad debe ser un número válido'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Calcular nueva cantidad
+        cantidad_anterior = float(item.cantidad)
+        
+        if tipo_movimiento in ['entrada', 'ajuste_positivo']:
+            cantidad_nueva = cantidad_anterior + cantidad
+        elif tipo_movimiento in ['salida', 'ajuste_negativo']:
+            cantidad_nueva = cantidad_anterior - cantidad
+            if cantidad_nueva < 0:
+                return Response(
+                    {'error': 'No hay suficiente stock para realizar esta operación'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        else:
+            return Response(
+                {'error': 'Tipo de movimiento no válido'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Crear el movimiento
+        movimiento = MovimientosInventario.objects.create(
+            idinventario=item,
+            tipomovimiento=tipo_movimiento,
+            cantidad=cantidad,
+            cantidadanterior=cantidad_anterior,
+            cantidadnueva=cantidad_nueva,
+            motivo=request.data.get('motivo', ''),
+            observaciones=request.data.get('observaciones', ''),
+            documento=request.data.get('documento', ''),
+            idproveedor_id=request.data.get('idproveedor'),
+            idordentrabajo_id=request.data.get('idordentrabajo'),
+            usuariomovimiento=request.user
+        )
+        
+        # Actualizar la cantidad del item
+        item.cantidad = cantidad_nueva
+        item.save()
+        
+        # Serializar y retornar
+        serializer = MovimientosInventarioSerializer(movimiento)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class MovimientosInventarioViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    ViewSet para consultar movimientos de inventario (solo lectura)
+    """
+    queryset = MovimientosInventario.objects.select_related(
+        'idinventario', 'usuariomovimiento', 'idproveedor', 'idordentrabajo'
+    ).all()
+    serializer_class = MovimientosInventarioSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ['idinventario', 'tipomovimiento', 'idproveedor', 'idordentrabajo']
+    ordering = ['-fechamovimiento']
+    
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        
+        # Filtrar por item de inventario
+        item_id = self.request.query_params.get('item', None)
+        if item_id:
+            queryset = queryset.filter(idinventario_id=item_id)
+        
+        # Filtrar por tipo de movimiento
+        tipo = self.request.query_params.get('tipo', None)
+        if tipo:
+            queryset = queryset.filter(tipomovimiento=tipo)
+        
+        # Filtrar por rango de fechas
+        fecha_desde = self.request.query_params.get('fecha_desde', None)
+        fecha_hasta = self.request.query_params.get('fecha_hasta', None)
+        
+        if fecha_desde:
+            queryset = queryset.filter(fechamovimiento__gte=fecha_desde)
+        if fecha_hasta:
+            queryset = queryset.filter(fechamovimiento__lte=fecha_hasta)
+        
+        return queryset

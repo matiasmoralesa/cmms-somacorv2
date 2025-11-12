@@ -9,7 +9,8 @@ from .models import (
     EstadosOrdenTrabajo, OrdenesTrabajo, ActividadesOrdenTrabajo,
     TiposMantenimientoOT, TiposTarea, TareasEstandar, PlanesMantenimiento,
     DetallesPlanMantenimiento, Agendas, ChecklistTemplate, ChecklistCategory,
-    ChecklistItem, ChecklistInstance, ChecklistAnswer, ChecklistImage, EvidenciaOT
+    ChecklistItem, ChecklistInstance, ChecklistAnswer, ChecklistImage, EvidenciaOT,
+    Especialidades, Tecnicos, CategoriasInventario, Proveedores, Inventario, MovimientosInventario
 )
 from datetime import datetime, date
 
@@ -772,3 +773,211 @@ class OrdenSearchSerializer(serializers.ModelSerializer):
             'idordentrabajo', 'numeroot', 'descripcionproblemareportado',
             'prioridad', 'estado_nombre', 'equipo_nombre', 'fechacreacionot'
         ]
+
+
+
+# =============================================================================
+# SERIALIZERS DE TÉCNICOS
+# =============================================================================
+
+class EspecialidadesSerializer(serializers.ModelSerializer):
+    """Serializer para especialidades técnicas"""
+    
+    class Meta:
+        model = Especialidades
+        fields = '__all__'
+
+
+class TecnicosListSerializer(serializers.ModelSerializer):
+    """Serializer para listar técnicos con información básica"""
+    nombre_completo = serializers.CharField(read_only=True)
+    username = serializers.CharField(source='usuario.username', read_only=True)
+    first_name = serializers.CharField(source='usuario.first_name', read_only=True)
+    last_name = serializers.CharField(source='usuario.last_name', read_only=True)
+    email_usuario = serializers.EmailField(source='usuario.email', read_only=True)
+    especialidades_list = serializers.ListField(read_only=True)
+    ordenes_activas = serializers.IntegerField(read_only=True)
+    
+    class Meta:
+        model = Tecnicos
+        fields = [
+            'idtecnico', 'usuario', 'nombre_completo', 'username', 
+            'first_name', 'last_name', 'telefono', 'email', 'email_usuario',
+            'cargo', 'estado', 'activo', 'fecha_ingreso',
+            'especialidades_list', 'ordenes_activas'
+        ]
+        read_only_fields = ['idtecnico', 'ordenes_activas']
+
+
+class TecnicosDetailSerializer(serializers.ModelSerializer):
+    """Serializer detallado para técnicos con toda la información"""
+    nombre_completo = serializers.CharField(read_only=True)
+    username = serializers.CharField(source='usuario.username', read_only=True)
+    first_name = serializers.CharField(source='usuario.first_name', read_only=True)
+    last_name = serializers.CharField(source='usuario.last_name', read_only=True)
+    email_usuario = serializers.EmailField(source='usuario.email', read_only=True)
+    especialidades_list = serializers.ListField(read_only=True)
+    especialidades_detalle = EspecialidadesSerializer(source='especialidades', many=True, read_only=True)
+    ordenes_activas = serializers.IntegerField(read_only=True)
+    
+    class Meta:
+        model = Tecnicos
+        fields = [
+            'idtecnico', 'usuario', 'nombre_completo', 'username',
+            'first_name', 'last_name', 'telefono', 'email', 'email_usuario',
+            'cargo', 'estado', 'activo', 'fecha_ingreso',
+            'especialidades', 'especialidades_list', 'especialidades_detalle',
+            'ordenes_activas'
+        ]
+        read_only_fields = ['idtecnico', 'ordenes_activas']
+
+
+class TecnicosCreateUpdateSerializer(serializers.ModelSerializer):
+    """Serializer para crear y actualizar técnicos"""
+    
+    class Meta:
+        model = Tecnicos
+        fields = [
+            'idtecnico', 'usuario', 'especialidades', 'telefono', 
+            'email', 'cargo', 'estado', 'activo', 'fecha_ingreso'
+        ]
+        read_only_fields = ['idtecnico']
+    
+    def validate_usuario(self, value):
+        """Validar que el usuario no esté ya asignado a otro técnico"""
+        if self.instance is None:  # Solo en creación
+            if Tecnicos.objects.filter(usuario=value).exists():
+                raise serializers.ValidationError("Este usuario ya está asignado como técnico.")
+        return value
+
+
+
+# =============================================================================
+# SERIALIZERS DE INVENTARIO
+# =============================================================================
+
+class CategoriasInventarioSerializer(serializers.ModelSerializer):
+    """Serializer para categorías de inventario"""
+    
+    class Meta:
+        model = CategoriasInventario
+        fields = '__all__'
+
+
+class ProveedoresSerializer(serializers.ModelSerializer):
+    """Serializer para proveedores"""
+    
+    class Meta:
+        model = Proveedores
+        fields = '__all__'
+
+
+class InventarioListSerializer(serializers.ModelSerializer):
+    """Serializer para listar items de inventario"""
+    categoria_nombre = serializers.CharField(read_only=True)
+    proveedor_nombre = serializers.CharField(read_only=True)
+    estado_stock = serializers.CharField(read_only=True)
+    valor_total = serializers.DecimalField(max_digits=15, decimal_places=2, read_only=True)
+    
+    class Meta:
+        model = Inventario
+        fields = [
+            'idinventario', 'codigointerno', 'codigobarras', 'nombreitem',
+            'descripcion', 'idcategoria', 'categoria_nombre', 'idproveedor', 'proveedor_nombre',
+            'cantidad', 'stockminimo', 'stockmaximo', 'unidadmedida', 'ubicacion',
+            'costounitario', 'precioventa', 'estado', 'estado_stock', 'valor_total',
+            'fechacreacion', 'fechaactualizacion'
+        ]
+        read_only_fields = ['idinventario', 'fechacreacion', 'fechaactualizacion']
+
+
+class InventarioDetailSerializer(serializers.ModelSerializer):
+    """Serializer detallado para items de inventario"""
+    categoria_nombre = serializers.CharField(read_only=True)
+    proveedor_nombre = serializers.CharField(read_only=True)
+    estado_stock = serializers.CharField(read_only=True)
+    valor_total = serializers.DecimalField(max_digits=15, decimal_places=2, read_only=True)
+    categoria_detalle = CategoriasInventarioSerializer(source='idcategoria', read_only=True)
+    proveedor_detalle = ProveedoresSerializer(source='idproveedor', read_only=True)
+    usuario_creacion_nombre = serializers.CharField(source='usuariocreacion.get_full_name', read_only=True)
+    
+    class Meta:
+        model = Inventario
+        fields = [
+            'idinventario', 'codigointerno', 'codigobarras', 'nombreitem',
+            'descripcion', 'idcategoria', 'categoria_nombre', 'categoria_detalle',
+            'idproveedor', 'proveedor_nombre', 'proveedor_detalle',
+            'cantidad', 'stockminimo', 'stockmaximo', 'unidadmedida', 'ubicacion',
+            'costounitario', 'precioventa', 'estado', 'estado_stock', 'valor_total',
+            'fechacreacion', 'fechaactualizacion', 'usuariocreacion', 'usuario_creacion_nombre'
+        ]
+        read_only_fields = ['idinventario', 'fechacreacion', 'fechaactualizacion']
+
+
+class InventarioCreateUpdateSerializer(serializers.ModelSerializer):
+    """Serializer para crear y actualizar items de inventario"""
+    
+    class Meta:
+        model = Inventario
+        fields = [
+            'codigointerno', 'codigobarras', 'nombreitem', 'descripcion',
+            'idcategoria', 'idproveedor', 'cantidad', 'stockminimo', 'stockmaximo',
+            'unidadmedida', 'ubicacion', 'costounitario', 'precioventa', 'estado'
+        ]
+    
+    def validate_codigointerno(self, value):
+        """Validar que el código interno sea único"""
+        if self.instance is None:  # Solo en creación
+            if Inventario.objects.filter(codigointerno=value).exists():
+                raise serializers.ValidationError("Este código interno ya existe.")
+        else:  # En actualización, excluir el item actual
+            if Inventario.objects.filter(codigointerno=value).exclude(pk=self.instance.pk).exists():
+                raise serializers.ValidationError("Este código interno ya existe.")
+        return value
+    
+    def validate(self, data):
+        """Validaciones adicionales"""
+        # Validar que stock mínimo no sea mayor que stock máximo
+        if data.get('stockmaximo') and data.get('stockminimo'):
+            if data['stockminimo'] > data['stockmaximo']:
+                raise serializers.ValidationError({
+                    'stockminimo': 'El stock mínimo no puede ser mayor que el stock máximo.'
+                })
+        
+        # Validar que la cantidad no sea negativa
+        if data.get('cantidad', 0) < 0:
+            raise serializers.ValidationError({
+                'cantidad': 'La cantidad no puede ser negativa.'
+            })
+        
+        return data
+
+
+class MovimientosInventarioSerializer(serializers.ModelSerializer):
+    """Serializer para movimientos de inventario"""
+    item_nombre = serializers.CharField(source='idinventario.nombreitem', read_only=True)
+    item_codigo = serializers.CharField(source='idinventario.codigointerno', read_only=True)
+    usuario_nombre = serializers.CharField(source='usuariomovimiento.get_full_name', read_only=True)
+    proveedor_nombre = serializers.CharField(source='idproveedor.nombreproveedor', read_only=True)
+    orden_numero = serializers.CharField(source='idordentrabajo.numeroot', read_only=True)
+    
+    class Meta:
+        model = MovimientosInventario
+        fields = [
+            'idmovimiento', 'idinventario', 'item_nombre', 'item_codigo',
+            'tipomovimiento', 'cantidad', 'cantidadanterior', 'cantidadnueva',
+            'motivo', 'observaciones', 'documento', 'idordentrabajo', 'orden_numero',
+            'idproveedor', 'proveedor_nombre', 'fechamovimiento', 'usuariomovimiento', 'usuario_nombre'
+        ]
+        read_only_fields = ['idmovimiento', 'fechamovimiento']
+
+
+class InventarioStatsSerializer(serializers.Serializer):
+    """Serializer para estadísticas de inventario"""
+    total_items = serializers.IntegerField()
+    items_activos = serializers.IntegerField()
+    items_stock_bajo = serializers.IntegerField()
+    items_sin_stock = serializers.IntegerField()
+    valor_total_inventario = serializers.DecimalField(max_digits=15, decimal_places=2)
+    categorias_count = serializers.IntegerField()
+    proveedores_count = serializers.IntegerField()

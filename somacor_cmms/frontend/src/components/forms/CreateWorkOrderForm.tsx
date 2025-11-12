@@ -50,9 +50,11 @@ interface CreateWorkOrderFormProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  ordenData?: any; // Datos de la orden para edición
 }
 
-export default function CreateWorkOrderForm({ isOpen, onClose, onSuccess }: CreateWorkOrderFormProps) {
+export default function CreateWorkOrderForm({ isOpen, onClose, onSuccess, ordenData }: CreateWorkOrderFormProps) {
+  const isEditMode = Boolean(ordenData);
   const [equipos, setEquipos] = useState<Equipo[]>([]);
   const [tiposMantenimiento, setTiposMantenimiento] = useState<TipoMantenimiento[]>([]);
   const [loading, setLoading] = useState(false);
@@ -71,11 +73,75 @@ export default function CreateWorkOrderForm({ isOpen, onClose, onSuccess }: Crea
   // EFECTOS
   // =================================================================================
 
+  // Cargar datos del formulario (equipos y tipos de mantenimiento)
   useEffect(() => {
     if (isOpen) {
       loadFormData();
     }
   }, [isOpen]);
+
+  // Cargar datos de edición si se proporciona ordenData
+  // Este efecto se ejecuta DESPUÉS de que los equipos se hayan cargado
+  useEffect(() => {
+    if (isOpen && ordenData && equipos.length > 0) {
+      console.log('📝 Cargando datos de edición:', ordenData);
+      console.log('📝 Equipos disponibles:', equipos.length);
+      console.log('📝 ordenData.idequipo:', ordenData.idequipo);
+      console.log('📝 ordenData.idtipomantenimientoot:', ordenData.idtipomantenimientoot);
+      
+      // Normalizar prioridad
+      let prioridadNormalizada = 'Media';
+      if (ordenData.prioridad) {
+        const prioridad = ordenData.prioridad.toLowerCase();
+        if (prioridad === 'baja') prioridadNormalizada = 'Baja';
+        else if (prioridad === 'media') prioridadNormalizada = 'Media';
+        else if (prioridad === 'alta') prioridadNormalizada = 'Alta';
+        else if (prioridad === 'urgente' || prioridad === 'crítica') prioridadNormalizada = 'Urgente';
+      }
+      
+      const equipoId = ordenData.idequipo || 0;
+      const tipoMantenimientoId = ordenData.idtipomantenimientoot || 0;
+      
+      console.log('🔍 IDs extraídos:');
+      console.log('  - equipoId:', equipoId);
+      console.log('  - tipoMantenimientoId:', tipoMantenimientoId);
+      
+      // Extraer fecha en formato YYYY-MM-DD
+      let fechaProgramada = '';
+      if (ordenData.fechaejecucion) {
+        fechaProgramada = ordenData.fechaejecucion.split('T')[0];
+      } else if (ordenData.fechareportefalla) {
+        fechaProgramada = ordenData.fechareportefalla.split('T')[0];
+      } else if (ordenData.fechaprogramada) {
+        fechaProgramada = ordenData.fechaprogramada.split('T')[0];
+      }
+      
+      console.log('📅 Fecha extraída:', fechaProgramada);
+      
+      const nuevoFormData = {
+        equipoId: equipoId,
+        tipoMantenimiento: tipoMantenimientoId,
+        descripcion: ordenData.descripcionproblemareportado || '',
+        prioridad: prioridadNormalizada,
+        fechaProgramada: fechaProgramada,
+        observaciones: ordenData.observacionesfinales || ''
+      };
+      
+      console.log('✅ Datos a cargar en formulario:', nuevoFormData);
+      setFormData(nuevoFormData);
+    } else if (isOpen && !ordenData) {
+      console.log('🆕 Resetear formulario para nueva orden');
+      // Resetear formulario para nueva orden
+      setFormData({
+        equipoId: 0,
+        tipoMantenimiento: 0,
+        descripcion: '',
+        prioridad: 'Media',
+        fechaProgramada: '',
+        observaciones: ''
+      });
+    }
+  }, [isOpen, ordenData, equipos]);
 
   // =================================================================================
   // FUNCIONES

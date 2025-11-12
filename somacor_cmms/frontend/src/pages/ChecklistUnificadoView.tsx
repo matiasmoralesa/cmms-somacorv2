@@ -127,59 +127,7 @@ const ChecklistUnificadoView: React.FC = () => {
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('lista');
 
-  // Datos mock para la lista de checklists
-  const mockChecklists: Checklist[] = [
-    {
-      id: 1,
-      name: 'Checklist Diario Compresor A-101',
-      equipment: 'Compresor de Aire Principal',
-      equipmentCode: 'EQ-001',
-      technician: 'Juan Pérez',
-      date: '2024-10-15',
-      status: 'completado',
-      totalItems: 15,
-      completedItems: 14,
-      failedItems: 1,
-      observations: 'Equipo en buen estado general, se detectó fuga menor en válvula de drenaje',
-      images: ['checklist_1.jpg', 'valve_leak.jpg'],
-      createdAt: '2024-10-15',
-      completedAt: '2024-10-15'
-    },
-    {
-      id: 2,
-      name: 'Checklist Semanal Bomba B-205',
-      equipment: 'Bomba Centrífuga B-205',
-      equipmentCode: 'EQ-002',
-      technician: 'María García',
-      date: '2024-10-16',
-      status: 'en_progreso',
-      totalItems: 12,
-      completedItems: 8,
-      failedItems: 0,
-      createdAt: '2024-10-16'
-    },
-    {
-      id: 3,
-      name: 'Checklist Mensual Motor C-310',
-      equipment: 'Motor Eléctrico C-310',
-      equipmentCode: 'EQ-003',
-      technician: 'Carlos López',
-      date: '2024-10-17',
-      status: 'pendiente',
-      totalItems: 20,
-      completedItems: 0,
-      failedItems: 0,
-      createdAt: '2024-10-17'
-    }
-  ];
-
-  const mockStats: ChecklistStats = {
-    totalChecklists: 24,
-    pendingChecklists: 8,
-    inProgressChecklists: 5,
-    completedChecklists: 11,
-    averageCompletion: 85
-  };
+  // Los datos se cargan desde el backend
 
   // Cargar datos iniciales
   useEffect(() => {
@@ -195,12 +143,77 @@ const ChecklistUnificadoView: React.FC = () => {
     try {
       setLoading(true);
       setError('');
-      // TODO: Cargar datos reales del backend
-      setChecklists(mockChecklists);
-      setStats(mockStats);
+      
+      // Cargar datos reales del backend
+      let checklistsData = [];
+      
+      try {
+        const data = await checklistService.instances.getAll();
+        checklistsData = data.results || data.data || data || [];
+      } catch (apiError) {
+        console.warn("Endpoint de checklist instances no disponible, usando array vacío");
+        checklistsData = [];
+      }
+      
+      // Validar que checklistsData sea un array
+      if (!Array.isArray(checklistsData)) {
+        console.warn("Los datos recibidos no son un array:", checklistsData);
+        checklistsData = [];
+      }
+      
+      // Mapear datos del backend al formato del componente
+      const mappedChecklists: Checklist[] = checklistsData.map((cl: any) => {
+        if (!cl || typeof cl !== 'object') {
+          return null;
+        }
+        
+        return {
+          id: cl.id || cl.idchecklist || 0,
+          name: cl.nombre || cl.template?.nombre || 'Checklist sin nombre',
+          equipment: cl.equipo?.nombreequipo || 'Equipo desconocido',
+          equipmentCode: cl.equipo?.codigointerno || 'N/A',
+          technician: cl.responsable?.nombre || cl.responsable || 'Sin asignar',
+          date: cl.fecha || cl.fechacreacion || new Date().toISOString().split('T')[0],
+          status: cl.estado || 'pendiente',
+          totalItems: cl.total_items || 0,
+          completedItems: cl.items_completados || 0,
+          failedItems: cl.items_fallidos || 0,
+          observations: cl.observaciones || '',
+          images: cl.imagenes || [],
+          createdAt: cl.fechacreacion || new Date().toISOString(),
+          completedAt: cl.fechacompletado || undefined
+        };
+      }).filter(Boolean) as Checklist[];
+      
+      setChecklists(mappedChecklists);
+      
+      // Calcular estadísticas
+      const stats: ChecklistStats = {
+        totalChecklists: mappedChecklists.length,
+        pendingChecklists: mappedChecklists.filter(c => c.status === 'pendiente').length,
+        inProgressChecklists: mappedChecklists.filter(c => c.status === 'en_progreso').length,
+        completedChecklists: mappedChecklists.filter(c => c.status === 'completado').length,
+        averageCompletion: mappedChecklists.length > 0 
+          ? Math.round(mappedChecklists.reduce((acc, c) => {
+              const percentage = c.totalItems > 0 ? (c.completedItems / c.totalItems * 100) : 0;
+              return acc + percentage;
+            }, 0) / mappedChecklists.length)
+          : 0
+      };
+      
+      setStats(stats);
+      
     } catch (err) {
       console.error("Error fetching checklists data:", err);
-      setError("No se pudo cargar la información de checklists.");
+      setError("No se pudo cargar la información de checklists. El módulo de checklists puede no estar configurado aún.");
+      setChecklists([]);
+      setStats({
+        totalChecklists: 0,
+        pendingChecklists: 0,
+        inProgressChecklists: 0,
+        completedChecklists: 0,
+        averageCompletion: 0
+      });
     } finally {
       setLoading(false);
     }
